@@ -3,9 +3,10 @@ const WebSocket = require("ws");
 
 const PORT = process.env.PORT || 10000;
 
-// ---------------- HTTP ----------------
+// -------------------- CLIENT HTML --------------------
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/html" });
+
   res.end(`
 <!DOCTYPE html>
 <html>
@@ -13,7 +14,25 @@ const server = http.createServer((req, res) => {
   <title>Gioco 5</title>
   <style>
     body { font-family: Arial; padding: 20px; }
-    .card { display:inline-block; padding:8px; margin:4px; border:1px solid black; }
+
+    #table {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+    }
+
+    .col {
+      border: 1px solid #ccc;
+      padding: 10px;
+      min-width: 80px;
+    }
+
+    .card {
+      border: 1px solid black;
+      padding: 5px;
+      margin: 3px 0;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -22,11 +41,11 @@ const server = http.createServer((req, res) => {
 
 <div id="status">Connessione...</div>
 
-<h3>Carte</h3>
+<h3>Carte in mano</h3>
 <div id="hand"></div>
 
 <h3>Tavolo</h3>
-<pre id="table"></pre>
+<div id="table"></div>
 
 <script>
 const ws = new WebSocket(location.origin.replace("http", "ws"));
@@ -35,23 +54,42 @@ ws.onmessage = (msg) => {
   const data = JSON.parse(msg.data);
 
   if (data.type === "state") {
+
     document.getElementById("status").innerText =
       "Giocatori: " + data.players;
 
-    document.getElementById("table").innerText =
-      JSON.stringify(data.table, null, 2);
-
+    // ---- MANO ----
     const handDiv = document.getElementById("hand");
     handDiv.innerHTML = "";
 
-    if (data.hand) {
-      data.hand.forEach(c => {
-        const d = document.createElement("div");
-        d.className = "card";
-        d.innerText = c.value + " " + c.suit;
-        handDiv.appendChild(d);
+    data.hand.forEach(c => {
+      const d = document.createElement("div");
+      d.className = "card";
+      d.innerText = c.value + " " + c.suit;
+      handDiv.appendChild(d);
+    });
+
+    // ---- TAVOLO (FIX VERO) ----
+    const tableDiv = document.getElementById("table");
+    tableDiv.innerHTML = "";
+
+    Object.keys(data.table).forEach(suit => {
+      const col = document.createElement("div");
+      col.className = "col";
+
+      const title = document.createElement("strong");
+      title.innerText = suit;
+      col.appendChild(title);
+
+      data.table[suit].forEach(card => {
+        const c = document.createElement("div");
+        c.className = "card";
+        c.innerText = card.value + " " + card.suit;
+        col.appendChild(c);
       });
-    }
+
+      tableDiv.appendChild(col);
+    });
   }
 };
 </script>
@@ -61,12 +99,13 @@ ws.onmessage = (msg) => {
   `);
 });
 
-// ---------------- GAME ----------------
+// -------------------- GAME SERVER --------------------
 const wss = new WebSocket.Server({ server });
 
 let players = [];
 let deck = [];
 let gameStarted = false;
+
 let table = null;
 
 function createDeck() {
@@ -97,6 +136,7 @@ function initGame() {
   });
 
   gameStarted = true;
+
   broadcastState();
 }
 
@@ -114,6 +154,7 @@ function broadcastState() {
 }
 
 wss.on("connection", (ws) => {
+
   const player = {
     id: Date.now(),
     ws,
@@ -122,9 +163,6 @@ wss.on("connection", (ws) => {
 
   players.push(player);
 
-  console.log("Player connesso:", players.length);
-
-  // avvia partita solo UNA volta
   if (!gameStarted) {
     initGame();
   }
@@ -142,6 +180,7 @@ wss.on("connection", (ws) => {
   });
 });
 
+// -------------------- START --------------------
 server.listen(PORT, () => {
-  console.log("Gioco 5 online su " + PORT);
+  console.log("Gioco 5 online su porta " + PORT);
 });
