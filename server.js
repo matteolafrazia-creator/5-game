@@ -3,7 +3,7 @@ const WebSocket = require("ws");
 
 const PORT = process.env.PORT || 10000;
 
-// ---------------- HTTP CLIENT ----------------
+// ---------------- HTTP ----------------
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/html" });
   res.end(`
@@ -13,15 +13,16 @@ const server = http.createServer((req, res) => {
   <title>Gioco 5</title>
   <style>
     body { font-family: Arial; padding: 20px; }
-    .card { display:inline-block; padding:10px; margin:5px; border:1px solid #000; }
+    .card { display:inline-block; padding:8px; margin:4px; border:1px solid black; }
   </style>
 </head>
 <body>
 
 <h2>Gioco 5</h2>
+
 <div id="status">Connessione...</div>
 
-<h3>Carte in mano</h3>
+<h3>Carte</h3>
 <div id="hand"></div>
 
 <h3>Tavolo</h3>
@@ -29,10 +30,6 @@ const server = http.createServer((req, res) => {
 
 <script>
 const ws = new WebSocket(location.origin.replace("http", "ws"));
-
-ws.onopen = () => {
-  document.getElementById("status").innerText = "Connesso";
-};
 
 ws.onmessage = (msg) => {
   const data = JSON.parse(msg.data);
@@ -47,12 +44,14 @@ ws.onmessage = (msg) => {
     const handDiv = document.getElementById("hand");
     handDiv.innerHTML = "";
 
-    data.hand.forEach(c => {
-      const div = document.createElement("div");
-      div.className = "card";
-      div.innerText = c.value + " " + c.suit;
-      handDiv.appendChild(div);
-    });
+    if (data.hand) {
+      data.hand.forEach(c => {
+        const d = document.createElement("div");
+        d.className = "card";
+        d.innerText = c.value + " " + c.suit;
+        handDiv.appendChild(d);
+      });
+    }
   }
 };
 </script>
@@ -68,6 +67,7 @@ const wss = new WebSocket.Server({ server });
 let players = [];
 let deck = [];
 let gameStarted = false;
+let table = null;
 
 function createDeck() {
   const suits = ["C", "D", "S", "B"];
@@ -82,31 +82,35 @@ function createDeck() {
   return d.sort(() => Math.random() - 0.5);
 }
 
-let table = {
-  C: [{ value: "5", suit: "C" }],
-  D: [{ value: "5", suit: "D" }],
-  S: [{ value: "5", suit: "S" }],
-  B: [{ value: "5", suit: "B" }]
-};
-
-function sendState(ws, player) {
-  ws.send(JSON.stringify({
-    type: "state",
-    hand: player.hand,
-    table,
-    players: players.length
-  }));
-}
-
-function startGame() {
-  gameStarted = true;
+function initGame() {
   deck = createDeck();
+
+  table = {
+    C: [{ value: "5", suit: "C" }],
+    D: [{ value: "5", suit: "D" }],
+    S: [{ value: "5", suit: "S" }],
+    B: [{ value: "5", suit: "B" }]
+  };
 
   players.forEach(p => {
     p.hand = deck.splice(0, 10);
   });
 
-  console.log("Partita avviata");
+  gameStarted = true;
+  broadcastState();
+}
+
+function broadcastState() {
+  players.forEach(p => {
+    if (p.ws.readyState === 1) {
+      p.ws.send(JSON.stringify({
+        type: "state",
+        players: players.length,
+        hand: p.hand,
+        table
+      }));
+    }
+  });
 }
 
 wss.on("connection", (ws) => {
@@ -118,20 +122,23 @@ wss.on("connection", (ws) => {
 
   players.push(player);
 
-  // se prima connessione → avvia gioco
+  console.log("Player connesso:", players.length);
+
+  // avvia partita solo UNA volta
   if (!gameStarted) {
-    startGame();
+    initGame();
   }
 
-  // manda stato completo SEMPRE
-  sendState(ws, player);
-
-  ws.on("message", (msg) => {
-    // pronto per regole future
-  });
+  broadcastState();
 
   ws.on("close", () => {
     players = players.filter(p => p.ws !== ws);
+
+    if (players.length === 0) {
+      gameStarted = false;
+    } else {
+      broadcastState();
+    }
   });
 });
 
