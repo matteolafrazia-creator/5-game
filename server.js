@@ -1,11 +1,20 @@
+const http = require("http");
 const WebSocket = require("ws");
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 10000;
 
-const wss = new WebSocket.Server({ port: PORT });
-
-wss.on("connection", (ws) => {
-  ws.send("Server 5 attivo");
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end("Server 5 online");
 });
 
-console.log("Server 5 avviato su porta " + PORT);
+const wss = new WebSocket.Server({ server });
+
+wss.on("connection", (ws) => {
+  console.log("Player connesso");
+  ws.send("OK - Server 5 attivo");
+});
+
+server.listen(PORT, () => {
+  console.log("Server 5 avviato su porta " + PORT);
+});
