@@ -23,11 +23,11 @@ const server = http.createServer((req, res) => {
 <body>
 
 <h2>Gioco 5</h2>
+
 <div id="status"></div>
+<div id="winner"></div>
 
-<h3>Turno giocatore: <span id="turn"></span></h3>
-
-<h3>Carte in mano</h3>
+<h3>Carte</h3>
 <div id="hand"></div>
 
 <h3>Tavolo</h3>
@@ -35,8 +35,6 @@ const server = http.createServer((req, res) => {
 
 <script>
 const ws = new WebSocket(location.origin.replace("http", "ws"));
-
-let myTurn = false;
 
 ws.onmessage = (msg) => {
   const data = JSON.parse(msg.data);
@@ -46,8 +44,8 @@ ws.onmessage = (msg) => {
     document.getElementById("status").innerText =
       "Giocatori: " + data.players;
 
-    document.getElementById("turn").innerText =
-      data.turn + 1;
+    document.getElementById("winner").innerText =
+      data.winner ? "🏆 Vincitore: Giocatore " + data.winner : "";
 
     const handDiv = document.getElementById("hand");
     handDiv.innerHTML = "";
@@ -100,9 +98,9 @@ const wss = new WebSocket.Server({ server });
 let players = [];
 let deck = [];
 let table = null;
-
 let turn = 0;
 let gameStarted = false;
+let winner = null;
 
 function createDeck() {
   const suits = ["C","D","S","B"];
@@ -133,17 +131,20 @@ function initGame() {
 
   turn = 0;
   gameStarted = true;
-
-  broadcast();
+  winner = null;
 }
 
-function canPlay(card, suit) {
-  const order = ["A","2","3","4","5","6","7","F","H","R"];
-  const idx = order.indexOf(card.value);
-  const top = table[suit][table[suit].length - 1];
-  const topIdx = order.indexOf(top.value);
+function order(value) {
+  return ["A","2","3","4","5","6","7","F","H","R"].indexOf(value);
+}
 
-  return card.value === "5" || Math.abs(idx - topIdx) === 1;
+function isValid(card, suit) {
+  if (card.value === "5") return true;
+
+  const top = table[suit][table[suit].length - 1];
+  const diff = Math.abs(order(card.value) - order(top.value));
+
+  return diff === 1;
 }
 
 function broadcast() {
@@ -154,6 +155,7 @@ function broadcast() {
         players: players.length,
         hand: p.hand,
         table,
+        winner,
         turn
       }));
     }
@@ -162,11 +164,7 @@ function broadcast() {
 
 wss.on("connection", (ws) => {
 
-  const player = {
-    ws,
-    hand: []
-  };
-
+  const player = { ws, hand: [] };
   players.push(player);
 
   if (!gameStarted) initGame();
@@ -175,6 +173,7 @@ wss.on("connection", (ws) => {
 
   ws.on("message", (msg) => {
     const data = JSON.parse(msg);
+    if (winner) return;
 
     if (data.type === "play") {
 
@@ -183,9 +182,14 @@ wss.on("connection", (ws) => {
 
       const suit = card.suit;
 
-      if (canPlay(card, suit)) {
+      if (isValid(card, suit) && players[turn].ws === ws) {
+
         table[suit].push(card);
         p.hand.splice(data.index, 1);
+
+        if (p.hand.length === 0) {
+          winner = players.indexOf(p) + 1;
+        }
 
         turn = (turn + 1) % players.length;
       }
