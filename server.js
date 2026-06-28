@@ -12,35 +12,41 @@ const wss = new WebSocket.Server({ server });
 
 let players = [];
 
-function broadcast(msg) {
+function broadcast(data) {
   players.forEach(p => {
     if (p.ws.readyState === 1) {
-      p.ws.send(JSON.stringify(msg));
+      p.ws.send(JSON.stringify(data));
     }
   });
 }
 
 wss.on("connection", (ws) => {
-  const player = { id: Date.now(), ws };
+  const player = {
+    id: Date.now(),
+    ws
+  };
+
   players.push(player);
 
   console.log("Giocatore connesso:", players.length);
 
   ws.send(JSON.stringify({
     type: "welcome",
-    message: "Sei connesso al gioco 5"
+    id: player.id,
+    players: players.length
   }));
 
   broadcast({
-    type: "players",
-    count: players.length
+    type: "players_update",
+    players: players.length
   });
 
   ws.on("close", () => {
     players = players.filter(p => p.ws !== ws);
+
     broadcast({
-      type: "players",
-      count: players.length
+      type: "players_update",
+      players: players.length
     });
   });
 });
