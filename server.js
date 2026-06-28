@@ -3,7 +3,7 @@ const WebSocket = require("ws");
 
 const PORT = process.env.PORT || 10000;
 
-// ---------------- HTTP + CLIENT ----------------
+// ---------------- HTTP CLIENT ----------------
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/html" });
   res.end(`
@@ -14,7 +14,6 @@ const server = http.createServer((req, res) => {
   <style>
     body { font-family: Arial; padding: 20px; }
     .card { display:inline-block; padding:10px; margin:5px; border:1px solid #000; }
-    .table { margin-top:20px; }
   </style>
 </head>
 <body>
@@ -38,12 +37,13 @@ ws.onopen = () => {
 ws.onmessage = (msg) => {
   const data = JSON.parse(msg.data);
 
-  if (data.type === "welcome") {
+  if (data.type === "state") {
     document.getElementById("status").innerText =
-      "Giocatori online: " + data.players;
-  }
+      "Giocatori: " + data.players;
 
-  if (data.type === "hand") {
+    document.getElementById("table").innerText =
+      JSON.stringify(data.table, null, 2);
+
     const handDiv = document.getElementById("hand");
     handDiv.innerHTML = "";
 
@@ -53,11 +53,6 @@ ws.onmessage = (msg) => {
       div.innerText = c.value + " " + c.suit;
       handDiv.appendChild(div);
     });
-  }
-
-  if (data.type === "table") {
-    document.getElementById("table").innerText =
-      JSON.stringify(data.table, null, 2);
   }
 };
 </script>
@@ -74,13 +69,6 @@ let players = [];
 let deck = [];
 let gameStarted = false;
 
-let table = {
-  C: [],
-  D: [],
-  S: [],
-  B: []
-};
-
 function createDeck() {
   const suits = ["C", "D", "S", "B"];
   const values = ["A","2","3","4","5","6","7","F","H","R"];
@@ -94,39 +82,28 @@ function createDeck() {
   return d.sort(() => Math.random() - 0.5);
 }
 
-function broadcast(data) {
-  players.forEach(p => {
-    if (p.ws.readyState === 1) {
-      p.ws.send(JSON.stringify(data));
-    }
-  });
+let table = {
+  C: [{ value: "5", suit: "C" }],
+  D: [{ value: "5", suit: "D" }],
+  S: [{ value: "5", suit: "S" }],
+  B: [{ value: "5", suit: "B" }]
+};
+
+function sendState(ws, player) {
+  ws.send(JSON.stringify({
+    type: "state",
+    hand: player.hand,
+    table,
+    players: players.length
+  }));
 }
 
 function startGame() {
   gameStarted = true;
   deck = createDeck();
 
-  // assegna mani
   players.forEach(p => {
     p.hand = deck.splice(0, 10);
-
-    p.ws.send(JSON.stringify({
-      type: "hand",
-      hand: p.hand
-    }));
-  });
-
-  // tavolo iniziale: tutti i 5
-  table = {
-    C: [{ value: "5", suit: "C" }],
-    D: [{ value: "5", suit: "D" }],
-    S: [{ value: "5", suit: "S" }],
-    B: [{ value: "5", suit: "B" }]
-  };
-
-  broadcast({
-    type: "table",
-    table
   });
 
   console.log("Partita avviata");
@@ -141,29 +118,23 @@ wss.on("connection", (ws) => {
 
   players.push(player);
 
-  ws.send(JSON.stringify({
-    type: "welcome",
-    players: players.length
-  }));
+  // se prima connessione → avvia gioco
+  if (!gameStarted) {
+    startGame();
+  }
 
-  ws.send(JSON.stringify({
-    type: "table",
-    table
-  }));
+  // manda stato completo SEMPRE
+  sendState(ws, player);
 
-  // start automatico per test (1 giocatore basta)
-  setTimeout(() => {
-    if (!gameStarted && players.length > 0) {
-      startGame();
-    }
-  }, 1000);
+  ws.on("message", (msg) => {
+    // pronto per regole future
+  });
 
   ws.on("close", () => {
     players = players.filter(p => p.ws !== ws);
   });
 });
 
-// ---------------- START ----------------
 server.listen(PORT, () => {
   console.log("Gioco 5 online su " + PORT);
 });
