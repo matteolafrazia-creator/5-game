@@ -65,6 +65,20 @@ function clearSession() {
   localStorage.removeItem("five_room_code");
 }
 
+function leaveGame() {
+  if (!confirm("Vuoi davvero uscire dalla partita?")) return;
+
+  try {
+    ws.send(JSON.stringify({ type: "leaveRoom" }));
+  } catch {}
+
+  clearSession();
+  state = null;
+  joined = false;
+  errorMessage = "";
+  renderStart();
+}
+
 function cardImg(card) {
   return `cards/${card.suit}_${card.rank}.png`;
 }
@@ -175,20 +189,9 @@ function renderHeader() {
 
   app.appendChild(div);
 
-  document.getElementById("topExitBtn").onclick = () => {
-    if (confirm("Vuoi davvero uscire dalla partita?")) {
-      ws.send(JSON.stringify({ type: "leaveRoom" }));
-      clearSession();
-    }
-  };
-
-  document.getElementById("copyCodeBtn").onclick = async () => {
-    await copyRoomCode();
-  };
-
-  document.getElementById("shareCodeBtn").onclick = async () => {
-    await shareRoomCode();
-  };
+  document.getElementById("topExitBtn").onclick = leaveGame;
+  document.getElementById("copyCodeBtn").onclick = async () => await copyRoomCode();
+  document.getElementById("shareCodeBtn").onclick = async () => await shareRoomCode();
 }
 
 async function copyRoomCode() {
@@ -208,11 +211,7 @@ async function shareRoomCode() {
 
   try {
     if (navigator.share) {
-      await navigator.share({
-        title: "5",
-        text,
-        url
-      });
+      await navigator.share({ title: "5", text, url });
     } else {
       await navigator.clipboard.writeText(text);
       showSmallToast("Invito copiato");
@@ -346,11 +345,7 @@ function renderHand() {
 
     img.onclick = () => {
       if (!state.yourTurn) return;
-
-      ws.send(JSON.stringify({
-        type: "play",
-        index
-      }));
+      ws.send(JSON.stringify({ type: "play", index }));
     };
 
     wrap.appendChild(img);
@@ -366,11 +361,7 @@ function renderActions() {
   if (state.gameState === "IN_GAME") {
     const pass = document.createElement("button");
     pass.innerText = "Passo";
-
-    pass.onclick = () => {
-      ws.send(JSON.stringify({ type: "pass" }));
-    };
-
+    pass.onclick = () => ws.send(JSON.stringify({ type: "pass" }));
     div.appendChild(pass);
   }
 
@@ -402,10 +393,7 @@ function renderSuitOverlay() {
       img.src = cardImg({ suit, rank: "5" });
 
       img.onclick = () => {
-        ws.send(JSON.stringify({
-          type: "chooseSuit",
-          suit
-        }));
+        ws.send(JSON.stringify({ type: "chooseSuit", suit }));
       };
 
       box.appendChild(img);
