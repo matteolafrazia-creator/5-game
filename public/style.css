@@ -503,6 +503,42 @@ input, button {
   100% { opacity: 0; transform: translate(-50%, -58%) scale(0.96); }
 }
 
+.passWarningOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  background: rgba(0,0,0,0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.passWarningModal {
+  background: #fff;
+  color: #111;
+  border-radius: 16px;
+  padding: 22px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  animation: modalIn 0.25s ease-out both;
+}
+
+.passWarningModal h2 {
+  margin-top: 0;
+}
+
+.passWarningModal button {
+  border: none;
+  border-radius: 10px;
+  background: #ffd54f;
+  color: #111;
+  cursor: pointer;
+  font-weight: bold;
+  padding: 10px 18px;
+}
+
 @media (max-width: 700px) {
   #app {
     padding: 4px;

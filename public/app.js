@@ -4,6 +4,7 @@ const ws = new WebSocket(location.origin.replace("http", "ws"));
 let state = null;
 let joined = false;
 let errorMessage = "";
+let dismissedPassWarningKey = null;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
@@ -168,6 +169,7 @@ function render() {
   renderSuitOverlay();
   renderEndOverlay();
   renderAbortedOverlay();
+  renderPassWarningOverlay();
 }
 
 function renderHeader() {
@@ -493,6 +495,39 @@ function renderAbortedOverlay() {
     joined = false;
     state = null;
     renderStart();
+  };
+}
+
+function renderPassWarningOverlay() {
+  if (!state) return;
+  if (!state.yourTurn) return;
+  if (!state.message) return;
+
+  const isPassWarning =
+    state.message.includes("Non puoi passare") ||
+    state.message.includes("devi giocare il 5");
+
+  if (!isPassWarning) return;
+
+  const warningKey = `${state.handNumber}-${state.turn}-${state.message}`;
+  if (dismissedPassWarningKey === warningKey) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "passWarningOverlay";
+
+  overlay.innerHTML = `
+    <div class="passWarningModal">
+      <h2>Attenzione</h2>
+      <p>${state.message}</p>
+      <button id="closePassWarningBtn">Ho capito</button>
+    </div>
+  `;
+
+  app.appendChild(overlay);
+
+  document.getElementById("closePassWarningBtn").onclick = () => {
+    dismissedPassWarningKey = warningKey;
+    overlay.remove();
   };
 }
 
