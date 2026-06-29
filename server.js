@@ -13,7 +13,7 @@ const RANKS = ["A", "2", "3", "4", "5", "6", "7", "F", "C", "R"];
 const RANK_VALUE = { A: 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, F: 8, C: 9, R: 10 };
 
 let players = [];
-let gameState = "WAITING";
+let gameState = "WAITING"; // WAITING | PICK_SUIT | IN_GAME | HAND_OVER | GAME_OVER
 let dealerIndex = null;
 let chosenSuit = null;
 let starterIndex = null;
@@ -21,6 +21,9 @@ let turn = null;
 let deck = [];
 let table = createEmptyTable();
 let message = "In attesa giocatori...";
+let lastCard = null;
+let handNumber = 1;
+let handResult = null;
 
 function createEmptyTable() {
   return {
@@ -47,17 +50,26 @@ function sortHand(hand) {
   });
 }
 
+function standings() {
+  return [...players]
+    .map(p => ({ name: p.name, total: p.totalScore || 0 }))
+    .sort((a, b) => a.total - b.total);
+}
+
 function broadcast() {
   players.forEach((p, i) => {
     if (!p.ws || p.ws.readyState !== 1) return;
+
     p.ws.send(JSON.stringify({
       gameState,
       playersCount: players.length,
+      handNumber,
       players: players.map(x => ({
         id: x.id,
         name: x.name,
         cards: x.hand.length,
-        connected: x.connected
+        connected: x.connected,
+        totalScore: x.totalScore || 0
       })),
       yourIndex: i,
       yourId: p.id,
@@ -68,20 +80,25 @@ function broadcast() {
       yourTurn: gameState === "IN_GAME" && turn === i,
       hand: p.hand,
       table,
-      message
+      message,
+      lastCard,
+      handResult,
+      standings: standings()
     }));
   });
 }
 
 function startSetup() {
   gameState = "PICK_SUIT";
-  dealerIndex = Math.floor(Math.random() * players.length);
+  dealerIndex = dealerIndex === null ? Math.floor(Math.random() * players.length) : (dealerIndex + 1) % players.length;
   chosenSuit = null;
   starterIndex = null;
   turn = null;
   table = createEmptyTable();
+  handResult = null;
+  lastCard = null;
   players.forEach(p => p.hand = []);
-  message = `${players[dealerIndex].name} deve scegliere il seme.`;
+  message = `Mano ${handNumber}/10. ${players[dealerIndex].name} deve scegliere il seme.`;
   broadcast();
 }
 
@@ -107,10 +124,11 @@ function dealAfterSuit(suit) {
   const five = starter.hand.splice(fiveIndex, 1)[0];
 
   table[chosenSuit].five = five;
+  lastCard = { ...five, playerName: starter.name };
 
   turn = (starterIndex + 1) % players.length;
   gameState = "IN_GAME";
-  message = `${players[dealerIndex].name} ha scelto ${chosenSuit}. ${starter.name} apre con il 5.`;
+  message = `${players[dealerIndex].name} ha scelto ${chosenSuit}. ${starter.name} apre con il 5. Turno di ${players[turn].name}.`;
 
   broadcast();
 }
@@ -138,6 +156,24 @@ function hasAnyMove(player) {
   return player.hand.some(canPlay);
 }
 
+function finishHand(winner) {
+  const scores = players.map(p => {
+    const points = p === winner ? 0 : p.hand.length;
+    p.totalScore = (p.totalScore || 0) + points;
+    return { name: p.name, points };
+  });
+
+  handResult = {
+    winnerName: winner.name,
+    scores,
+    showStandings: handNumber === 5 || handNumber === 10,
+    final: handNumber === 10
+  };
+
+  gameState = handNumber === 10 ? "GAME_OVER" : "HAND_OVER";
+  message = `${winner.name} ha vinto la mano ${handNumber}.`;
+}
+
 function playCard(playerIndex, cardIndex) {
   const player = players[playerIndex];
   const card = player.hand[cardIndex];
@@ -152,15 +188,35 @@ function playCard(playerIndex, cardIndex) {
 
   player.hand.splice(cardIndex, 1);
   player.hand = sortHand(player.hand);
+  lastCard = { ...card, playerName: player.name };
 
   if (player.hand.length === 0) {
-    gameState = "HAND_OVER";
-    message = `${player.name} ha vinto la mano!`;
+    finishHand(player);
     return;
   }
 
   turn = (turn + 1) % players.length;
-  message = `Turno di ${players[turn].name}.`;
+  message = `${player.name} ha giocato. Turno di ${players[turn].name}.`;
+}
+
+function nextHand() {
+  if (gameState !== "HAND_OVER") return;
+  handNumber += 1;
+  startSetup();
+}
+
+function resetMatch() {
+  players.forEach(p => {
+    p.hand = [];
+    p.totalScore = 0;
+  });
+  handNumber = 1;
+  dealerIndex = null;
+  gameState = "WAITING";
+  table = createEmptyTable();
+  message = "Nuova partita. In attesa giocatori...";
+  tryStart();
+  broadcast();
 }
 
 function createId() {
@@ -193,7 +249,8 @@ wss.on("connection", (ws) => {
         ws,
         name: data.name || `Giocatore ${players.length + 1}`,
         hand: [],
-        connected: true
+        connected: true,
+        totalScore: 0
       };
 
       players.push(player);
@@ -232,6 +289,14 @@ wss.on("connection", (ws) => {
         message = `${players[i].name} passa. Turno di ${players[turn].name}.`;
       }
       broadcast();
+    }
+
+    if (data.type === "nextHand") {
+      nextHand();
+    }
+
+    if (data.type === "resetMatch") {
+      resetMatch();
     }
   });
 

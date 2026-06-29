@@ -3,6 +3,7 @@ const ws = new WebSocket(location.origin.replace("http", "ws"));
 
 let state = null;
 let joined = false;
+let lastYourTurn = false;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
@@ -20,12 +21,20 @@ ws.onopen = () => {
 
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
+
   if (data.type === "joined") {
     localStorage.setItem("five_player_id", data.playerId);
     return;
   }
+
+  const wasMyTurn = state?.yourTurn;
   state = data;
+
   render();
+
+  if (!wasMyTurn && state.yourTurn) showTurnToast();
+
+  lastYourTurn = state.yourTurn;
 };
 
 function cardImg(card) {
@@ -40,6 +49,7 @@ function renderJoin() {
       <button id="joinBtn">Entra</button>
     </div>
   `;
+
   document.getElementById("joinBtn").onclick = () => {
     const name = document.getElementById("nameInput").value.trim() || "Giocatore";
     localStorage.setItem("five_player_name", name);
@@ -51,12 +61,15 @@ function renderJoin() {
 function render() {
   if (!joined) return renderJoin();
   if (!state) return;
+
   app.innerHTML = "";
   renderHeader();
   renderPlayers();
+  renderLastCard();
   renderTable();
   renderHand();
   renderActions();
+  renderEndOverlay();
 }
 
 function renderHeader() {
@@ -72,13 +85,15 @@ function renderHeader() {
   }
   if (state.gameState === "IN_GAME") status = state.yourTurn ? "È il tuo turno" : `Turno di ${state.players[state.turn]?.name}`;
   if (state.gameState === "HAND_OVER") status = "Mano conclusa";
+  if (state.gameState === "GAME_OVER") status = "Partita conclusa";
 
   div.innerHTML = `
-    <h2>5</h2>
+    <h2>5 · Mano ${state.handNumber || 1}/10</h2>
     <div>${status}</div>
     <div class="message">${state.message || ""}</div>
     <div>${state.chosenSuit ? "Seme scelto: " + SUIT_LABELS[state.chosenSuit] : ""}</div>
   `;
+
   app.appendChild(div);
 }
 
@@ -90,10 +105,19 @@ function renderPlayers() {
     const el = document.createElement("div");
     el.className = "player";
     if (i === state.turn && state.gameState === "IN_GAME") el.classList.add("active");
-    el.innerText = `${p.name} - ${p.cards} carte ${p.connected ? "" : "(offline)"}`;
+    el.innerText = `${p.name} · ${p.cards} carte · ${p.totalScore || 0} pt ${p.connected ? "" : "(offline)"}`;
     div.appendChild(el);
   });
 
+  app.appendChild(div);
+}
+
+function renderLastCard() {
+  if (!state.lastCard) return;
+
+  const div = document.createElement("div");
+  div.className = "lastCardBox";
+  div.innerHTML = `<span>Ultima carta:</span> <img src="${cardImg(state.lastCard)}" /> <span>${state.lastCard.playerName}</span>`;
   app.appendChild(div);
 }
 
@@ -195,14 +219,45 @@ function renderActions() {
     div.appendChild(pass);
   }
 
-  const reset = document.createElement("button");
-  reset.innerText = "Esci / reset giocatore";
-  reset.onclick = () => {
-    localStorage.removeItem("five_player_id");
-    localStorage.removeItem("five_player_name");
-    location.reload();
-  };
-  div.appendChild(reset);
-
   app.appendChild(div);
+}
+
+function renderEndOverlay() {
+  if (!["HAND_OVER", "GAME_OVER"].includes(state.gameState) || !state.handResult) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+
+  const scores = state.handResult.scores.map(s => `<li>${s.name}: ${s.points} punti</li>`).join("");
+  const standings = state.handResult.showStandings
+    ? `<h3>${state.handResult.final ? "Classifica finale" : "Classifica a metà partita"}</h3>
+       <ol>${state.standings.map(s => `<li>${s.name}: ${s.total} punti</li>`).join("")}</ol>`
+    : "";
+
+  overlay.innerHTML = `
+    <div class="modal">
+      <h1>Ha vinto ${state.handResult.winnerName}</h1>
+      <h3>Punteggi mano</h3>
+      <ul>${scores}</ul>
+      ${standings}
+      ${state.gameState === "HAND_OVER" ? '<button id="nextHandBtn">Prossima mano</button>' : '<button id="resetMatchBtn">Nuova partita</button>'}
+    </div>
+  `;
+
+  app.appendChild(overlay);
+
+  const next = document.getElementById("nextHandBtn");
+  if (next) next.onclick = () => ws.send(JSON.stringify({ type: "nextHand" }));
+
+  const reset = document.getElementById("resetMatchBtn");
+  if (reset) reset.onclick = () => ws.send(JSON.stringify({ type: "resetMatch" }));
+}
+
+function showTurnToast() {
+  const toast = document.createElement("div");
+  toast.className = "turnToast";
+  toast.innerText = "È il tuo turno";
+  document.body.appendChild(toast);
+
+  setTimeout(() => toast.remove(), 1600);
 }

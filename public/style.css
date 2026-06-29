@@ -3,10 +3,12 @@ body {
   background: #0f5132;
   color: #fff;
   font-family: Arial, sans-serif;
+  overflow-x: hidden;
 }
 
 #app {
-  padding: 12px;
+  padding: 8px;
+  padding-bottom: 112px;
 }
 
 .screen {
@@ -22,32 +24,40 @@ input, button {
 }
 
 .header {
-  background: rgba(0,0,0,0.25);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(0,0,0,0.72);
   border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  backdrop-filter: blur(6px);
 }
 
 .header h2 {
-  margin: 0 0 6px 0;
+  margin: 0 0 4px 0;
+  font-size: 20px;
 }
 
 .message {
-  margin-top: 6px;
+  margin-top: 5px;
   color: #ffe082;
+  font-size: 14px;
 }
 
 .players {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: 8px;
 }
 
 .player {
   background: rgba(255,255,255,0.15);
-  padding: 8px;
+  padding: 7px;
   border-radius: 8px;
+  white-space: nowrap;
+  font-size: 13px;
 }
 
 .player.active {
@@ -56,32 +66,57 @@ input, button {
   font-weight: bold;
 }
 
+.lastCardBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.25);
+  padding: 6px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.lastCardBox img {
+  width: 38px;
+  border-radius: 4px;
+}
+
 .table {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 6px;
   align-items: start;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .suitColumn {
   background: rgba(0,0,0,0.2);
-  min-height: 240px;
+  min-height: 170px;
+  max-height: 56vh;
+  overflow-y: auto;
   border-radius: 12px;
-  padding: 8px;
+  padding: 6px;
   text-align: center;
   position: relative;
 }
 
 .suitTitle {
   font-weight: bold;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
+  font-size: 13px;
+  position: sticky;
+  top: 0;
+  background: rgba(0,0,0,0.35);
+  border-radius: 6px;
+  padding: 3px;
 }
 
 .tableCard {
-  width: 64px;
+  width: clamp(42px, 10vw, 64px);
   display: block;
-  margin: 4px auto;
+  margin: 3px auto;
   border-radius: 5px;
 }
 
@@ -92,15 +127,15 @@ input, button {
 
 .completedStack {
   position: relative;
-  width: 78px;
-  height: 110px;
-  margin: 26px auto 8px;
+  width: 70px;
+  height: 100px;
+  margin: 18px auto 8px;
   animation: compactStack 0.45s ease-out both;
 }
 
 .stackCard {
   position: absolute;
-  width: 72px;
+  width: 64px;
   left: calc(var(--i) * 2px);
   top: calc(var(--i) * 2px);
   border-radius: 6px;
@@ -109,46 +144,51 @@ input, button {
 }
 
 .completedLabel {
-  font-size: 13px;
+  font-size: 12px;
   color: #ffe082;
   font-weight: bold;
-  margin-top: 6px;
 }
 
 @keyframes compactStack {
-  from {
-    transform: scale(1.12) translateY(-8px);
-    opacity: 0.4;
-  }
-  to {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-  }
+  from { transform: scale(1.12) translateY(-8px); opacity: 0.4; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 .hand {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 54px;
+  z-index: 10;
   display: flex;
-  gap: 8px;
+  gap: 7px;
   overflow-x: auto;
-  padding: 12px;
-  background: rgba(0,0,0,0.25);
-  border-radius: 12px;
+  padding: 9px;
+  background: rgba(0,0,0,0.78);
+  border-top: 1px solid rgba(255,255,255,0.15);
 }
 
 .handCard {
-  width: 72px;
+  width: clamp(54px, 15vw, 74px);
   cursor: pointer;
   border-radius: 6px;
   transition: transform 0.15s;
+  flex: 0 0 auto;
 }
 
 .handCard:hover {
-  transform: translateY(-8px);
+  transform: translateY(-6px);
 }
 
 .actions {
-  margin-top: 12px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 11;
   text-align: center;
+  background: rgba(0,0,0,0.82);
+  padding: 6px;
 }
 
 .actions button {
@@ -160,25 +200,99 @@ input, button {
   cursor: pointer;
 }
 
-@media (max-width: 600px) {
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: rgba(0,0,0,0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.modal {
+  background: #fff;
+  color: #111;
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  animation: modalIn 0.35s ease-out both;
+}
+
+.modal h1 {
+  margin-top: 0;
+}
+
+.modal ul, .modal ol {
+  text-align: left;
+}
+
+@keyframes modalIn {
+  from { transform: scale(0.86); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.turnToast {
+  position: fixed;
+  z-index: 120;
+  left: 50%;
+  top: 45%;
+  transform: translate(-50%, -50%);
+  background: #ffd54f;
+  color: #111;
+  font-weight: bold;
+  font-size: 24px;
+  padding: 18px 28px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  animation: toastTurn 1.55s ease-out both;
+}
+
+@keyframes toastTurn {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.85); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -58%) scale(0.96); }
+}
+
+@media (max-width: 700px) {
+  #app {
+    padding: 6px;
+    padding-bottom: 104px;
+  }
+
   .table {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .suitColumn {
+    padding: 4px;
+    min-height: 145px;
+    max-height: 48vh;
+  }
+
+  .suitTitle {
+    font-size: 11px;
   }
 
   .tableCard {
-    width: 54px;
+    width: clamp(34px, 10vw, 48px);
   }
 
-  .completedStack {
-    width: 68px;
-    height: 98px;
+  .lastCardBox img {
+    width: 32px;
   }
 
-  .stackCard {
-    width: 62px;
+  .players {
+    font-size: 12px;
   }
 
-  .handCard {
-    width: 62px;
+  .player {
+    font-size: 12px;
+    padding: 5px;
   }
 }
