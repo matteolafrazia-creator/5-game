@@ -1,148 +1,188 @@
+const app = document.getElementById("app");
 const ws = new WebSocket(location.origin.replace("http", "ws"));
 
-let state = {};
+let state = null;
+let joined = false;
 
-const suitSymbols = {
-  C: "♣",
-  D: "♦",
-  S: "♠",
-  B: "♥"
+const SUITS = ["CP", "DN", "SP", "BA"];
+const SUIT_LABELS = {
+  CP: "Coppe",
+  DN: "Denari",
+  SP: "Spade",
+  BA: "Bastoni"
 };
+
+const RANK_ORDER = ["R", "C", "F", "7", "6", "5", "4", "3", "2", "A"];
 
 ws.onopen = () => {
-  const name = prompt("Nome giocatore:");
-  ws.send(JSON.stringify({ type: "setName", name }));
+  renderJoin();
 };
 
-ws.onmessage = (msg) => {
-  state = JSON.parse(msg.data);
+ws.onmessage = (event) => {
+  state = JSON.parse(event.data);
   render();
 };
 
-/* ========================= */
+function cardImg(card) {
+  return `cards/${card.suit}_${card.rank}.png`;
+}
+
+function renderJoin() {
+  app.innerHTML = `
+    <div class="screen">
+      <h1>5</h1>
+      <input id="nameInput" placeholder="Nome giocatore" />
+      <button id="joinBtn">Entra</button>
+    </div>
+  `;
+
+  document.getElementById("joinBtn").onclick = () => {
+    const name = document.getElementById("nameInput").value.trim() || "Giocatore";
+    joined = true;
+    ws.send(JSON.stringify({ type: "join", name }));
+  };
+}
 
 function render() {
-  document.body.innerHTML = "";
+  if (!joined) return renderJoin();
+  if (!state) return;
 
-  renderTop();
+  app.innerHTML = "";
+
+  renderHeader();
+  renderPlayers();
   renderTable();
   renderHand();
   renderActions();
 }
 
-/* ========================= */
+function renderHeader() {
+  const div = document.createElement("div");
+  div.className = "header";
 
-function renderTop() {
-  const top = document.createElement("div");
-
-  const title = document.createElement("h2");
-  title.innerText = `Giocatori: ${state.playersCount}/4`;
-  top.appendChild(title);
-
-  const status = document.createElement("h3");
-
-  if (state.gameState === "WAITING") status.innerText = "In attesa...";
+  let status = "";
+  if (state.gameState === "WAITING") status = `In attesa giocatori (${state.playersCount}/4)`;
   if (state.gameState === "PICK_SUIT") {
-    status.innerText =
-      state.yourIndex === state.dealerIndex
-        ? "👉 Scegli il seme"
-        : "Attesa mazziere...";
+    status = state.yourIndex === state.dealerIndex
+      ? "Scegli il seme"
+      : `Attesa scelta seme da ${state.players[state.dealerIndex]?.name}`;
   }
   if (state.gameState === "IN_GAME") {
-    status.innerText = state.yourTurn ? "👉 TUO TURNO" : "Attendi...";
+    status = state.yourTurn ? "È il tuo turno" : `Turno di ${state.players[state.turn]?.name}`;
   }
+  if (state.gameState === "HAND_OVER") status = "Mano conclusa";
 
-  top.appendChild(status);
+  div.innerHTML = `
+    <h2>5</h2>
+    <div>${status}</div>
+    <div class="message">${state.message || ""}</div>
+    <div>${state.chosenSuit ? "Seme scelto: " + SUIT_LABELS[state.chosenSuit] : ""}</div>
+  `;
 
-  if (state.chosenSuit) {
-    const s = document.createElement("div");
-    s.innerText = "Seme: " + suitSymbols[state.chosenSuit] + " " + state.chosenSuit;
-    top.appendChild(s);
-  }
-
-  document.body.appendChild(top);
+  app.appendChild(div);
 }
 
-/* ========================= */
+function renderPlayers() {
+  const div = document.createElement("div");
+  div.className = "players";
+
+  state.players?.forEach((p, i) => {
+    const el = document.createElement("div");
+    el.className = "player";
+    if (i === state.turn && state.gameState === "IN_GAME") el.classList.add("active");
+    el.innerText = `${p.name} - ${p.cards} carte ${p.connected ? "" : "(offline)"}`;
+    div.appendChild(el);
+  });
+
+  app.appendChild(div);
+}
 
 function renderTable() {
-  const wrap = document.createElement("div");
-  wrap.style.display = "flex";
-  wrap.style.gap = "20px";
+  const table = document.createElement("div");
+  table.className = "table";
 
-  ["C","D","S","B"].forEach(s => {
+  SUITS.forEach(suit => {
     const col = document.createElement("div");
-    col.style.border = "1px solid #ccc";
-    col.style.padding = "10px";
-    col.style.width = "120px";
+    col.className = "suitColumn";
 
-    const t = document.createElement("b");
-    t.innerText = suitSymbols[s] + " " + s;
-    col.appendChild(t);
+    const title = document.createElement("div");
+    title.className = "suitTitle";
+    title.innerText = SUIT_LABELS[suit];
+    col.appendChild(title);
 
-    (state.table?.[s] || []).forEach(c => {
-      const d = document.createElement("div");
-      d.innerText = c.value;
-      col.appendChild(d);
+    const cards = getColumnCards(suit);
+
+    cards.forEach(card => {
+      const img = document.createElement("img");
+      img.className = "tableCard";
+      img.src = cardImg(card);
+      col.appendChild(img);
     });
 
-    wrap.appendChild(col);
+    table.appendChild(col);
   });
 
-  document.body.appendChild(wrap);
+  app.appendChild(table);
 }
 
-/* ========================= */
+function getColumnCards(suit) {
+  const col = state.table?.[suit];
+  if (!col) return [];
+
+  const up = [...col.up].sort((a, b) => rankSortDesc(a.rank, b.rank));
+  const down = [...col.down].sort((a, b) => rankSortDesc(a.rank, b.rank));
+
+  const result = [];
+  result.push(...up);
+  if (col.five) result.push(col.five);
+  result.push(...down);
+
+  return result;
+}
+
+function rankSortDesc(a, b) {
+  return RANK_ORDER.indexOf(a) - RANK_ORDER.indexOf(b);
+}
 
 function renderHand() {
-  const hand = document.createElement("div");
+  const wrap = document.createElement("div");
+  wrap.className = "hand";
 
-  (state.hand || []).forEach((c, i) => {
-    const btn = document.createElement("button");
-    btn.innerText = `${c.value} ${suitSymbols[c.suit]}`;
+  state.hand?.forEach((card, index) => {
+    const img = document.createElement("img");
+    img.className = "handCard";
+    img.src = cardImg(card);
 
-    btn.onclick = () => {
+    img.onclick = () => {
       if (!state.yourTurn) return;
-      ws.send(JSON.stringify({ type: "play", index: i }));
+      ws.send(JSON.stringify({ type: "play", index }));
     };
 
-    hand.appendChild(btn);
+    wrap.appendChild(img);
   });
 
-  document.body.appendChild(hand);
+  app.appendChild(wrap);
 }
-
-/* ========================= */
 
 function renderActions() {
   const div = document.createElement("div");
+  div.className = "actions";
 
-  if (
-    state.gameState === "PICK_SUIT" &&
-    state.yourIndex === state.dealerIndex
-  ) {
-    ["C","D","S","B"].forEach(s => {
-      const b = document.createElement("button");
-      b.innerText = "Scegli " + suitSymbols[s];
-
-      b.onclick = () => {
-        ws.send(JSON.stringify({ type: "chooseSuit", suit: s }));
-      };
-
-      div.appendChild(b);
+  if (state.gameState === "PICK_SUIT" && state.yourIndex === state.dealerIndex) {
+    SUITS.forEach(suit => {
+      const btn = document.createElement("button");
+      btn.innerText = SUIT_LABELS[suit];
+      btn.onclick = () => ws.send(JSON.stringify({ type: "chooseSuit", suit }));
+      div.appendChild(btn);
     });
   }
 
   if (state.gameState === "IN_GAME") {
     const pass = document.createElement("button");
-    pass.innerText = "PASSA";
-
-    pass.onclick = () => {
-      ws.send(JSON.stringify({ type: "pass" }));
-    };
-
+    pass.innerText = "Passo";
+    pass.onclick = () => ws.send(JSON.stringify({ type: "pass" }));
     div.appendChild(pass);
   }
 
-  document.body.appendChild(div);
+  app.appendChild(div);
 }

@@ -1,65 +1,133 @@
 body {
   margin: 0;
-  font-family: Arial;
-  background: #0f172a;
-  color: white;
+  background: #0f5132;
+  color: #fff;
+  font-family: Arial, sans-serif;
 }
 
 #app {
-  padding: 10px;
+  padding: 12px;
 }
 
-#topBar {
+.screen {
+  max-width: 360px;
+  margin: 80px auto;
+  text-align: center;
+}
+
+input, button {
+  padding: 10px;
+  margin: 6px;
+  font-size: 16px;
+}
+
+.header {
+  background: rgba(0,0,0,0.25);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.header h2 {
+  margin: 0 0 6px 0;
+}
+
+.message {
+  margin-top: 6px;
+  color: #ffe082;
+}
+
+.players {
   display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  background: #111827;
-  border-radius: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
-#table {
+.player {
+  background: rgba(255,255,255,0.15);
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.player.active {
+  background: #ffd54f;
+  color: #111;
+  font-weight: bold;
+}
+
+.table {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  align-items: start;
+  margin-bottom: 18px;
 }
 
-.suit {
-  background: #1f2937;
-  padding: 10px;
-  border-radius: 10px;
+.suitColumn {
+  background: rgba(0,0,0,0.2);
+  min-height: 240px;
+  border-radius: 12px;
+  padding: 8px;
+  text-align: center;
 }
 
-.card {
-  background: white;
-  color: black;
-  padding: 6px;
-  margin: 4px;
+.suitTitle {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.tableCard {
+  width: 64px;
+  display: block;
+  margin: 4px auto;
+  border-radius: 5px;
+}
+
+.hand {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 12px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 12px;
+}
+
+.handCard {
+  width: 72px;
+  cursor: pointer;
   border-radius: 6px;
+  transition: transform 0.15s;
+}
+
+.handCard:hover {
+  transform: translateY(-8px);
+}
+
+.actions {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.actions button {
+  min-width: 90px;
+  border: none;
+  border-radius: 8px;
+  background: #ffd54f;
+  color: #111;
   cursor: pointer;
 }
 
-#hand {
-  position: fixed;
-  bottom: 60px;
-  left: 0;
-  right: 0;
-  background: #111827;
-  padding: 10px;
-  display: flex;
-  overflow-x: auto;
-}
+@media (max-width: 600px) {
+  .table {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-#actions {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  background: #111827;
-  padding: 10px;
-}
+  .tableCard {
+    width: 54px;
+  }
 
-button {
-  width: 100%;
-  padding: 10px;
-  font-size: 18px;
+  .handCard {
+    width: 62px;
+  }
 }

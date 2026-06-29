@@ -8,186 +8,235 @@ app.use(express.static("public"));
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+const SUITS = ["CP", "DN", "SP", "BA"];
+const RANKS = ["A", "2", "3", "4", "5", "6", "7", "F", "C", "R"];
+const RANK_VALUE = { A: 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, F: 8, C: 9, R: 10 };
+
 let players = [];
-
-let gameState = "WAITING";
-
-let deck = [];
-let table = { C: [], D: [], S: [], B: [] };
-
+let gameState = "WAITING"; // WAITING | PICK_SUIT | IN_GAME | HAND_OVER
 let dealerIndex = null;
 let chosenSuit = null;
+let starterIndex = null;
 let turn = null;
+let deck = [];
+let table = createEmptyTable();
+let message = "In attesa giocatori...";
 
-/* ========================= */
+function createEmptyTable() {
+  return {
+    CP: { up: [], five: null, down: [] },
+    DN: { up: [], five: null, down: [] },
+    SP: { up: [], five: null, down: [] },
+    BA: { up: [], five: null, down: [] }
+  };
+}
 
 function createDeck() {
-  const suits = ["C", "D", "S", "B"];
-  const values = ["A","2","3","4","5","6","7","F","H","R"];
-
-  let d = [];
-  for (let s of suits) {
-    for (let v of values) {
-      d.push({ suit: s, value: v });
+  const d = [];
+  for (const suit of SUITS) {
+    for (const rank of RANKS) {
+      d.push({ suit, rank });
     }
   }
   return d.sort(() => Math.random() - 0.5);
 }
 
-/* ========================= */
-
-function order(v) {
-  return ["A","2","3","4","5","6","7","F","H","R"].indexOf(v);
+function sortHand(hand) {
+  return hand.sort((a, b) => {
+    const suitDiff = SUITS.indexOf(a.suit) - SUITS.indexOf(b.suit);
+    if (suitDiff !== 0) return suitDiff;
+    return RANK_VALUE[a.rank] - RANK_VALUE[b.rank];
+  });
 }
-
-/* ========================= */
-
-function findStartingPlayer() {
-  for (let i = 0; i < players.length; i++) {
-    if (players[i].hand.some(c => c.value === "5" && c.suit === chosenSuit)) {
-      return i;
-    }
-  }
-  return 0;
-}
-
-/* ========================= */
-
-function isValid(card, suit) {
-  if (table[suit].length === 0) return card.value === "5";
-
-  const top = table[suit][table[suit].length - 1];
-  return Math.abs(order(card.value) - order(top.value)) === 1;
-}
-
-/* ========================= */
 
 function broadcast() {
   players.forEach((p, i) => {
-    if (p.ws.readyState !== 1) return;
+    if (!p.ws || p.ws.readyState !== 1) return;
 
     p.ws.send(JSON.stringify({
       gameState,
       playersCount: players.length,
-      players: players.map(x => x.name || "Anon"),
-      hand: p.hand,
-      table,
+      players: players.map(x => ({
+        name: x.name,
+        cards: x.hand.length,
+        connected: x.connected
+      })),
+      yourIndex: i,
       dealerIndex,
       chosenSuit,
+      starterIndex,
       turn,
-      yourIndex: i,
-      yourTurn: gameState === "IN_GAME" && turn === i
+      yourTurn: gameState === "IN_GAME" && turn === i,
+      hand: p.hand,
+      table,
+      message
     }));
   });
 }
 
-/* =========================
-   START GAME (SOLO SETUP)
-========================= */
-
-function startGameFlow(suit) {
-  deck = createDeck();
-  table = { C: [], D: [], S: [], B: [] };
-
-  chosenSuit = suit;
-
-  players.forEach(p => (p.hand = deck.splice(0, 10)));
-
-  turn = findStartingPlayer();
-
-  gameState = "IN_GAME";
-
-  broadcast();
-}
-
-/* =========================
-   START MATCH (FIX MAZZIERE)
-========================= */
-
-function startMatch() {
-  if (players.length !== 4) return;
-
+function startSetup() {
   gameState = "PICK_SUIT";
   dealerIndex = Math.floor(Math.random() * players.length);
-
   chosenSuit = null;
+  starterIndex = null;
   turn = null;
+  table = createEmptyTable();
+  players.forEach(p => p.hand = []);
+  message = `${players[dealerIndex].name} deve scegliere il seme.`;
+  broadcast();
+}
+
+function tryStart() {
+  if (gameState === "WAITING" && players.length === 4) {
+    startSetup();
+  }
+}
+
+function dealAfterSuit(suit) {
+  chosenSuit = suit;
+  deck = createDeck();
+  table = createEmptyTable();
+
+  players.forEach(p => {
+    p.hand = sortHand(deck.splice(0, 10));
+  });
+
+  starterIndex = players.findIndex(p =>
+    p.hand.some(c => c.suit === chosenSuit && c.rank === "5")
+  );
+
+  const starter = players[starterIndex];
+  const fiveIndex = starter.hand.findIndex(c => c.suit === chosenSuit && c.rank === "5");
+  const five = starter.hand.splice(fiveIndex, 1)[0];
+
+  table[chosenSuit].five = five;
+
+  turn = (starterIndex + 1) % players.length;
+  gameState = "IN_GAME";
+  message = `${players[dealerIndex].name} ha scelto ${chosenSuit}. ${starter.name} apre con il 5.`;
 
   broadcast();
 }
 
-/* ========================= */
+function canPlay(card) {
+  const col = table[card.suit];
+  const value = RANK_VALUE[card.rank];
 
-wss.on("connection", (ws) => {
-
-  const player = { ws, name: null, hand: [] };
-  players.push(player);
-
-  if (players.length === 4 && gameState === "WAITING") {
-    startMatch();
+  if (!col.five) {
+    return card.rank === "5";
   }
 
-  broadcast();
+  if (value > 5) {
+    const highest = col.up.length
+      ? Math.max(...col.up.map(c => RANK_VALUE[c.rank]))
+      : 5;
+    return value === highest + 1;
+  }
 
-  ws.on("message", (msg) => {
-    const data = JSON.parse(msg);
-    const i = players.findIndex(p => p.ws === ws);
+  if (value < 5) {
+    const lowest = col.down.length
+      ? Math.min(...col.down.map(c => RANK_VALUE[c.rank]))
+      : 5;
+    return value === lowest - 1;
+  }
 
-    if (data.type === "setName") {
-      players[i].name = data.name;
+  return false;
+}
+
+function hasAnyMove(player) {
+  return player.hand.some(canPlay);
+}
+
+function playCard(playerIndex, cardIndex) {
+  const player = players[playerIndex];
+  const card = player.hand[cardIndex];
+  if (!card) return false;
+  if (!canPlay(card)) return false;
+
+  const col = table[card.suit];
+  const value = RANK_VALUE[card.rank];
+
+  if (card.rank === "5") col.five = card;
+  else if (value > 5) col.up.push(card);
+  else col.down.push(card);
+
+  player.hand.splice(cardIndex, 1);
+  player.hand = sortHand(player.hand);
+
+  if (player.hand.length === 0) {
+    gameState = "HAND_OVER";
+    message = `${player.name} ha vinto la mano!`;
+    return true;
+  }
+
+  turn = (turn + 1) % players.length;
+  message = `Turno di ${players[turn].name}.`;
+  return true;
+}
+
+wss.on("connection", (ws) => {
+  ws.on("message", (raw) => {
+    const data = JSON.parse(raw);
+
+    if (data.type === "join") {
+      if (players.length >= 4) {
+        ws.send(JSON.stringify({ gameState: "FULL", message: "Partita piena." }));
+        return;
+      }
+
+      const player = {
+        ws,
+        name: data.name || `Giocatore ${players.length + 1}`,
+        hand: [],
+        connected: true
+      };
+
+      players.push(player);
+      tryStart();
+      broadcast();
     }
 
-    /* =========================
-       SCELTA SEME
-    ========================= */
+    const i = players.findIndex(p => p.ws === ws);
+    if (i === -1) return;
 
     if (data.type === "chooseSuit") {
       if (gameState !== "PICK_SUIT") return;
       if (i !== dealerIndex) return;
+      if (!SUITS.includes(data.suit)) return;
 
-      startGameFlow(data.suit);
+      dealAfterSuit(data.suit);
     }
-
-    /* ========================= */
 
     if (data.type === "play") {
       if (gameState !== "IN_GAME") return;
-      if (turn !== i) return;
+      if (i !== turn) return;
 
-      const card = players[i].hand[data.index];
-      if (!card) return;
-
-      if (isValid(card, card.suit)) {
-        table[card.suit].push(card);
-        players[i].hand.splice(data.index, 1);
-
-        turn = (turn + 1) % players.length;
-      }
+      playCard(i, data.index);
+      broadcast();
     }
-
-    /* ========================= */
 
     if (data.type === "pass") {
-      if (turn === i) {
-        turn = (turn + 1) % players.length;
-      }
-    }
+      if (gameState !== "IN_GAME") return;
+      if (i !== turn) return;
 
-    broadcast();
+      if (hasAnyMove(players[i])) {
+        message = "Non puoi passare: hai almeno una mossa disponibile.";
+      } else {
+        turn = (turn + 1) % players.length;
+        message = `${players[i].name} passa. Turno di ${players[turn].name}.`;
+      }
+
+      broadcast();
+    }
   });
 
   ws.on("close", () => {
-    players = players.filter(p => p.ws !== ws);
-
-    if (players.length < 4) {
-      gameState = "WAITING";
-      dealerIndex = null;
-      chosenSuit = null;
-      turn = null;
-    }
+    const p = players.find(x => x.ws === ws);
+    if (p) p.connected = false;
+    broadcast();
   });
 });
 
 server.listen(process.env.PORT || 10000, () => {
-  console.log("Gioco 5 online");
+  console.log("Gioco 5 V2 online");
 });
