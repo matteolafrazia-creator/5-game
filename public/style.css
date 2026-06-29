@@ -22,14 +22,55 @@ html, body {
 
 .screen {
   max-width: 360px;
-  margin: 80px auto;
+  margin: 60px auto;
   text-align: center;
+}
+
+.startScreen h1 {
+  font-size: 56px;
+  margin-bottom: 0;
 }
 
 input, button {
   padding: 10px;
   margin: 6px;
   font-size: 16px;
+}
+
+.startScreen input {
+  width: calc(100% - 16px);
+  border-radius: 8px;
+  border: none;
+}
+
+.startScreen button {
+  width: calc(100% - 16px);
+  border: none;
+  border-radius: 10px;
+  background: #ffd54f;
+  color: #111;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.joinBox {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.25);
+}
+
+.errorBox {
+  background: #ffdddd;
+  color: #8a0000;
+  padding: 8px;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
+.betaLabel {
+  margin-top: 18px;
+  font-size: 12px;
+  opacity: 0.7;
 }
 
 .header {
@@ -43,6 +84,12 @@ input, button {
 .header h2 {
   margin: 0 0 2px 0;
   font-size: 17px;
+}
+
+.roomCode {
+  color: #ffd54f;
+  font-size: 13px;
+  margin-bottom: 2px;
 }
 
 .message {
@@ -220,6 +267,11 @@ input, button {
   cursor: pointer;
 }
 
+.actions .exitBtn {
+  background: #ef5350;
+  color: #fff;
+}
+
 .suitOverlay,
 .overlay {
   position: fixed;
@@ -244,13 +296,26 @@ input, button {
   animation: modalIn 0.35s ease-out both;
 }
 
-.suitButtons {
+.suitCardButtons {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+  align-items: center;
 }
 
-.suitButtons button,
+.chooseSuitCard {
+  width: 100%;
+  max-width: 80px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.chooseSuitCard:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+}
+
 .modal button {
   border: none;
   border-radius: 10px;
@@ -363,5 +428,9 @@ input, button {
   .actions button {
     padding: 8px;
     font-size: 14px;
+  }
+
+  .chooseSuitCard {
+    max-width: 64px;
   }
 }

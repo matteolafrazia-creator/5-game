@@ -3,21 +3,27 @@ const ws = new WebSocket(location.origin.replace("http", "ws"));
 
 let state = null;
 let joined = false;
+let errorMessage = "";
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
-
 const VERTICAL_SLOTS = ["R", "C", "F", "7", "6", "5", "4", "3", "2", "A"];
 
 ws.onopen = () => {
   const savedId = localStorage.getItem("five_player_id");
   const savedName = localStorage.getItem("five_player_name");
+  const savedRoom = localStorage.getItem("five_room_code");
 
-  if (savedId && savedName) {
+  if (savedId && savedName && savedRoom) {
     joined = true;
-    ws.send(JSON.stringify({ type: "join", playerId: savedId, name: savedName }));
+    ws.send(JSON.stringify({
+      type: "joinRoom",
+      playerId: savedId,
+      name: savedName,
+      roomCode: savedRoom
+    }));
   } else {
-    renderJoin();
+    renderStart();
   }
 };
 
@@ -26,39 +32,108 @@ ws.onmessage = (event) => {
 
   if (data.type === "joined") {
     localStorage.setItem("five_player_id", data.playerId);
+    localStorage.setItem("five_room_code", data.roomCode);
+    joined = true;
+    return;
+  }
+
+  if (data.type === "left") {
+    clearSession();
+    state = null;
+    joined = false;
+    renderStart();
+    return;
+  }
+
+  if (data.type === "error") {
+    errorMessage = data.message;
+    joined = false;
+    renderStart();
     return;
   }
 
   const wasMyTurn = state?.yourTurn;
   state = data;
+  joined = true;
   render();
 
   if (!wasMyTurn && state.yourTurn) showTurnToast();
 };
 
+function clearSession() {
+  localStorage.removeItem("five_player_id");
+  localStorage.removeItem("five_room_code");
+}
+
 function cardImg(card) {
   return `cards/${card.suit}_${card.rank}.png`;
 }
 
-function renderJoin() {
+function renderStart() {
+  const savedName = localStorage.getItem("five_player_name") || "";
+
   app.innerHTML = `
-    <div class="screen">
+    <div class="screen startScreen">
       <h1>5</h1>
-      <input id="nameInput" placeholder="Nome giocatore" />
-      <button id="joinBtn">Entra</button>
+      <p>Gioca online con i tuoi amici</p>
+
+      ${errorMessage ? `<div class="errorBox">${errorMessage}</div>` : ""}
+
+      <input id="nameInput" placeholder="Nome giocatore" value="${savedName}" />
+
+      <button id="createBtn">Crea partita</button>
+
+      <div class="joinBox">
+        <input id="roomInput" placeholder="Codice partita" maxlength="6" />
+        <button id="joinBtn">Entra in partita</button>
+      </div>
+
+      <div class="betaLabel">Beta 0.9</div>
     </div>
   `;
 
-  document.getElementById("joinBtn").onclick = () => {
-    const name = document.getElementById("nameInput").value.trim() || "Giocatore";
+  document.getElementById("createBtn").onclick = () => {
+    const name = getName();
     localStorage.setItem("five_player_name", name);
+    errorMessage = "";
     joined = true;
-    ws.send(JSON.stringify({ type: "join", playerId: localStorage.getItem("five_player_id"), name }));
+
+    ws.send(JSON.stringify({
+      type: "createRoom",
+      playerId: localStorage.getItem("five_player_id"),
+      name
+    }));
+  };
+
+  document.getElementById("joinBtn").onclick = () => {
+    const name = getName();
+    const roomCode = document.getElementById("roomInput").value.trim().toUpperCase();
+
+    if (!roomCode) {
+      errorMessage = "Inserisci un codice partita.";
+      renderStart();
+      return;
+    }
+
+    localStorage.setItem("five_player_name", name);
+    errorMessage = "";
+    joined = true;
+
+    ws.send(JSON.stringify({
+      type: "joinRoom",
+      playerId: localStorage.getItem("five_player_id"),
+      name,
+      roomCode
+    }));
   };
 }
 
+function getName() {
+  return document.getElementById("nameInput").value.trim() || "Giocatore";
+}
+
 function render() {
-  if (!joined) return renderJoin();
+  if (!joined) return renderStart();
   if (!state) return;
 
   app.innerHTML = "";
@@ -70,6 +145,7 @@ function render() {
   renderActions();
   renderSuitOverlay();
   renderEndOverlay();
+  renderAbortedOverlay();
 }
 
 function renderHeader() {
@@ -82,9 +158,11 @@ function renderHeader() {
   if (state.gameState === "IN_GAME") status = state.yourTurn ? "È il tuo turno" : `Turno di ${state.players[state.turn]?.name}`;
   if (state.gameState === "HAND_OVER") status = "Mano conclusa";
   if (state.gameState === "GAME_OVER") status = "Partita conclusa";
+  if (state.gameState === "ABORTED") status = "Partita terminata";
 
   div.innerHTML = `
     <h2>5 · Mano ${state.handNumber || 1}/10</h2>
+    <div class="roomCode">Codice: <strong>${state.roomCode}</strong></div>
     <div>${status}</div>
     <div class="message">${state.message || ""}</div>
     <div>${state.chosenSuit ? "Seme scelto: " + SUIT_LABELS[state.chosenSuit] : ""}</div>
@@ -227,6 +305,17 @@ function renderActions() {
     div.appendChild(pass);
   }
 
+  const exit = document.createElement("button");
+  exit.innerText = "Esci";
+  exit.className = "exitBtn";
+  exit.onclick = () => {
+    if (confirm("Vuoi davvero uscire dalla partita?")) {
+      ws.send(JSON.stringify({ type: "leaveRoom" }));
+      clearSession();
+    }
+  };
+  div.appendChild(exit);
+
   app.appendChild(div);
 }
 
@@ -240,8 +329,8 @@ function renderSuitOverlay() {
     overlay.innerHTML = `
       <div class="suitModal">
         <h2>Scegli il seme</h2>
-        <p>La scelta avviene prima della distribuzione.</p>
-        <div id="suitButtons" class="suitButtons"></div>
+        <p>Clicca il 5 del seme scelto.</p>
+        <div id="suitButtons" class="suitCardButtons"></div>
       </div>
     `;
 
@@ -249,10 +338,11 @@ function renderSuitOverlay() {
 
     const box = document.getElementById("suitButtons");
     SUITS.forEach(suit => {
-      const btn = document.createElement("button");
-      btn.innerText = SUIT_LABELS[suit];
-      btn.onclick = () => ws.send(JSON.stringify({ type: "chooseSuit", suit }));
-      box.appendChild(btn);
+      const img = document.createElement("img");
+      img.className = "chooseSuitCard";
+      img.src = cardImg({ suit, rank: "5" });
+      img.onclick = () => ws.send(JSON.stringify({ type: "chooseSuit", suit }));
+      box.appendChild(img);
     });
   } else {
     overlay.innerHTML = `
@@ -295,6 +385,30 @@ function renderEndOverlay() {
 
   const reset = document.getElementById("resetMatchBtn");
   if (reset) reset.onclick = () => ws.send(JSON.stringify({ type: "resetMatch" }));
+}
+
+function renderAbortedOverlay() {
+  if (state.gameState !== "ABORTED") return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+
+  overlay.innerHTML = `
+    <div class="modal">
+      <h1>Partita terminata</h1>
+      <p>${state.message || ""}</p>
+      <button id="backHomeBtn">Torna alla home</button>
+    </div>
+  `;
+
+  app.appendChild(overlay);
+
+  document.getElementById("backHomeBtn").onclick = () => {
+    clearSession();
+    joined = false;
+    state = null;
+    renderStart();
+  };
 }
 
 function showTurnToast() {
