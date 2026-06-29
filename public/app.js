@@ -3,7 +3,6 @@ const ws = new WebSocket(location.origin.replace("http", "ws"));
 
 let state = null;
 let joined = false;
-let lastYourTurn = false;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
@@ -16,7 +15,9 @@ ws.onopen = () => {
   if (savedId && savedName) {
     joined = true;
     ws.send(JSON.stringify({ type: "join", playerId: savedId, name: savedName }));
-  } else renderJoin();
+  } else {
+    renderJoin();
+  }
 };
 
 ws.onmessage = (event) => {
@@ -29,12 +30,9 @@ ws.onmessage = (event) => {
 
   const wasMyTurn = state?.yourTurn;
   state = data;
-
   render();
 
   if (!wasMyTurn && state.yourTurn) showTurnToast();
-
-  lastYourTurn = state.yourTurn;
 };
 
 function cardImg(card) {
@@ -69,6 +67,7 @@ function render() {
   renderTable();
   renderHand();
   renderActions();
+  renderSuitOverlay();
   renderEndOverlay();
 }
 
@@ -78,11 +77,7 @@ function renderHeader() {
 
   let status = "";
   if (state.gameState === "WAITING") status = `In attesa giocatori (${state.playersCount}/4)`;
-  if (state.gameState === "PICK_SUIT") {
-    status = state.yourIndex === state.dealerIndex
-      ? "Scegli il seme"
-      : `Attesa scelta seme da ${state.players[state.dealerIndex]?.name}`;
-  }
+  if (state.gameState === "PICK_SUIT") status = state.yourIndex === state.dealerIndex ? "Devi scegliere il seme" : `Attesa scelta seme da ${state.players[state.dealerIndex]?.name}`;
   if (state.gameState === "IN_GAME") status = state.yourTurn ? "È il tuo turno" : `Turno di ${state.players[state.turn]?.name}`;
   if (state.gameState === "HAND_OVER") status = "Mano conclusa";
   if (state.gameState === "GAME_OVER") status = "Partita conclusa";
@@ -151,16 +146,21 @@ function renderTable() {
 
       const label = document.createElement("div");
       label.className = "completedLabel";
-      label.innerText = "Seme completato";
+      label.innerText = "Completo";
       col.appendChild(stack);
       col.appendChild(label);
     } else {
+      const cardRail = document.createElement("div");
+      cardRail.className = "tableCardRail";
+
       cards.forEach(card => {
         const img = document.createElement("img");
         img.className = "tableCard";
         img.src = cardImg(card);
-        col.appendChild(img);
+        cardRail.appendChild(img);
       });
+
+      col.appendChild(cardRail);
     }
 
     table.appendChild(col);
@@ -203,15 +203,6 @@ function renderActions() {
   const div = document.createElement("div");
   div.className = "actions";
 
-  if (state.gameState === "PICK_SUIT" && state.yourIndex === state.dealerIndex) {
-    SUITS.forEach(suit => {
-      const btn = document.createElement("button");
-      btn.innerText = SUIT_LABELS[suit];
-      btn.onclick = () => ws.send(JSON.stringify({ type: "chooseSuit", suit }));
-      div.appendChild(btn);
-    });
-  }
-
   if (state.gameState === "IN_GAME") {
     const pass = document.createElement("button");
     pass.innerText = "Passo";
@@ -220,6 +211,41 @@ function renderActions() {
   }
 
   app.appendChild(div);
+}
+
+function renderSuitOverlay() {
+  if (state.gameState !== "PICK_SUIT") return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "suitOverlay";
+
+  if (state.yourIndex === state.dealerIndex) {
+    overlay.innerHTML = `
+      <div class="suitModal">
+        <h2>Scegli il seme</h2>
+        <p>La scelta avviene prima della distribuzione.</p>
+        <div id="suitButtons" class="suitButtons"></div>
+      </div>
+    `;
+
+    app.appendChild(overlay);
+
+    const box = document.getElementById("suitButtons");
+    SUITS.forEach(suit => {
+      const btn = document.createElement("button");
+      btn.innerText = SUIT_LABELS[suit];
+      btn.onclick = () => ws.send(JSON.stringify({ type: "chooseSuit", suit }));
+      box.appendChild(btn);
+    });
+  } else {
+    overlay.innerHTML = `
+      <div class="suitModal">
+        <h2>Attesa mazziere</h2>
+        <p>${state.players[state.dealerIndex]?.name} sta scegliendo il seme.</p>
+      </div>
+    `;
+    app.appendChild(overlay);
+  }
 }
 
 function renderEndOverlay() {
@@ -258,6 +284,5 @@ function showTurnToast() {
   toast.className = "turnToast";
   toast.innerText = "È il tuo turno";
   document.body.appendChild(toast);
-
   setTimeout(() => toast.remove(), 1600);
 }
