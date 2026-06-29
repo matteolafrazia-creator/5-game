@@ -81,7 +81,7 @@ function standings(room) {
 
 function broadcast(room) {
   room.players.forEach((p, i) => {
-    if (!p.ws || p.ws.readyState !== 1) return;
+    if (!p.ws || p.ws.readyState !== WebSocket.OPEN) return;
 
     p.ws.send(JSON.stringify({
       type: "state",
@@ -294,15 +294,21 @@ function joinRoom(ws, room, data) {
   let player = room.players.find(p => p.id === data.playerId);
 
   if (player) {
+    if (player.reconnectTimer) {
+      clearTimeout(player.reconnectTimer);
+      player.reconnectTimer = null;
+    }
+
     player.ws = ws;
     player.connected = true;
-    if (player.reconnectTimer) clearTimeout(player.reconnectTimer);
+
     if (data.name) player.name = data.name;
 
     ws.roomCode = room.code;
     ws.playerId = player.id;
 
     ws.send(JSON.stringify({ type: "joined", playerId: player.id, roomCode: room.code }));
+
     room.message = `${player.name} è rientrato.`;
     broadcast(room);
     return;
@@ -345,14 +351,21 @@ function removePlayerExplicitly(ws) {
 
   const player = room.players[index];
 
-  if (player.reconnectTimer) clearTimeout(player.reconnectTimer);
+  if (player.reconnectTimer) {
+    clearTimeout(player.reconnectTimer);
+    player.reconnectTimer = null;
+  }
 
   room.players.splice(index, 1);
 
   ws.roomCode = null;
   ws.playerId = null;
 
-  ws.send(JSON.stringify({ type: "left" }));
+  try {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "left" }));
+    }
+  } catch {}
 
   if (room.players.length === 0) {
     rooms.delete(roomCode);
@@ -443,18 +456,37 @@ wss.on("connection", (ws) => {
     const player = room.players.find(p => p.id === ws.playerId);
     if (!player) return;
 
+    // FIX IMPORTANTE:
+    // Se il giocatore si è già ricollegato, player.ws punta al nuovo WebSocket.
+    // In quel caso questo close appartiene al vecchio socket e va ignorato.
+    if (player.ws !== ws) return;
+
     player.connected = false;
     room.message = `${player.name} si è disconnesso. Attendo il rientro entro 60 secondi.`;
     broadcast(room);
 
+    if (player.reconnectTimer) {
+      clearTimeout(player.reconnectTimer);
+      player.reconnectTimer = null;
+    }
+
     player.reconnectTimer = setTimeout(() => {
-      if (!player.connected && rooms.has(roomCode)) {
-        abortRoom(room, `${player.name} non è rientrato entro 60 secondi. Partita terminata.`);
-      }
+      if (!rooms.has(roomCode)) return;
+
+      const currentRoom = rooms.get(roomCode);
+      const currentPlayer = currentRoom.players.find(p => p.id === player.id);
+
+      if (!currentPlayer) return;
+
+      // Ulteriore protezione: se è rientrato o ha un socket aperto, non terminare.
+      if (currentPlayer.connected) return;
+      if (currentPlayer.ws && currentPlayer.ws.readyState === WebSocket.OPEN) return;
+
+      abortRoom(currentRoom, `${currentPlayer.name} non è rientrato entro 60 secondi. Partita terminata.`);
     }, RECONNECT_MS);
   });
 });
 
 server.listen(process.env.PORT || 10000, () => {
-  console.log("Gioco 5 v0.9.0-beta.2 online");
+  console.log("Gioco 5 reconnect fix online");
 });
