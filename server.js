@@ -36,6 +36,12 @@ function createDeck() {
 
 /* ========================= */
 
+function order(v) {
+  return ["A","2","3","4","5","6","7","F","H","R"].indexOf(v);
+}
+
+/* ========================= */
+
 function findStartingPlayer() {
   for (let i = 0; i < players.length; i++) {
     if (players[i].hand.some(c => c.value === "5" && c.suit === chosenSuit)) {
@@ -43,12 +49,6 @@ function findStartingPlayer() {
     }
   }
   return 0;
-}
-
-/* ========================= */
-
-function order(v) {
-  return ["A","2","3","4","5","6","7","F","H","R"].indexOf(v);
 }
 
 /* ========================= */
@@ -82,7 +82,7 @@ function broadcast() {
 }
 
 /* =========================
-   START GAME FLOW (FIX CHIAVE)
+   START GAME (SOLO SETUP)
 ========================= */
 
 function startGameFlow(suit) {
@@ -97,16 +97,23 @@ function startGameFlow(suit) {
 
   gameState = "IN_GAME";
 
-  broadcast(); // 🔥 fondamentale immediato
+  broadcast();
 }
 
-/* ========================= */
+/* =========================
+   START MATCH (FIX MAZZIERE)
+========================= */
 
-function tryStart() {
-  if (players.length === 4 && gameState === "WAITING") {
-    dealerIndex = Math.floor(Math.random() * players.length);
-    gameState = "PICK_SUIT";
-  }
+function startMatch() {
+  if (players.length !== 4) return;
+
+  gameState = "PICK_SUIT";
+  dealerIndex = Math.floor(Math.random() * players.length);
+
+  chosenSuit = null;
+  turn = null;
+
+  broadcast();
 }
 
 /* ========================= */
@@ -116,21 +123,22 @@ wss.on("connection", (ws) => {
   const player = { ws, name: null, hand: [] };
   players.push(player);
 
-  tryStart();
+  if (players.length === 4 && gameState === "WAITING") {
+    startMatch();
+  }
+
   broadcast();
 
   ws.on("message", (msg) => {
     const data = JSON.parse(msg);
     const i = players.findIndex(p => p.ws === ws);
 
-    /* ========================= */
-
     if (data.type === "setName") {
       players[i].name = data.name;
     }
 
     /* =========================
-       SCELTA SEME (MAZZIERE)
+       SCELTA SEME
     ========================= */
 
     if (data.type === "chooseSuit") {
@@ -173,6 +181,7 @@ wss.on("connection", (ws) => {
 
     if (players.length < 4) {
       gameState = "WAITING";
+      dealerIndex = null;
       chosenSuit = null;
       turn = null;
     }
