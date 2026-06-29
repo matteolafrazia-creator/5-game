@@ -190,6 +190,7 @@ input, button {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .fiveSlot {
@@ -203,7 +204,31 @@ input, button {
   max-width: min(10vw, 58px);
   display: block;
   border-radius: 4px;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.35);
 }
+
+/* 
+  L'ultima carta visibile della scala deve stare davanti.
+  Per le carte sopra il 5, la carta più alta viene renderizzata più in alto
+  ma resta leggibile.
+  Per le carte sotto il 5, le carte successive non coprono quella precedente.
+*/
+.cardSlot:has(.tableCard) {
+  z-index: 2;
+}
+
+.fixedColumnGrid .cardSlot:nth-child(1) { z-index: 10; }
+.fixedColumnGrid .cardSlot:nth-child(2) { z-index: 9; }
+.fixedColumnGrid .cardSlot:nth-child(3) { z-index: 8; }
+.fixedColumnGrid .cardSlot:nth-child(4) { z-index: 7; }
+.fixedColumnGrid .cardSlot:nth-child(5) { z-index: 6; }
+.fixedColumnGrid .cardSlot:nth-child(6) { z-index: 5; }
+.fixedColumnGrid .cardSlot:nth-child(7) { z-index: 6; }
+.fixedColumnGrid .cardSlot:nth-child(8) { z-index: 7; }
+.fixedColumnGrid .cardSlot:nth-child(9) { z-index: 8; }
+.fixedColumnGrid .cardSlot:nth-child(10) { z-index: 9; }
 
 .completedSuit {
   background: rgba(255, 213, 79, 0.18);
