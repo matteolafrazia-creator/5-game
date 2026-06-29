@@ -1,0 +1,65 @@
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #0f172a;
+  color: white;
+}
+
+#app {
+  padding: 10px;
+}
+
+#topBar {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background: #111827;
+  border-radius: 10px;
+}
+
+#table {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.suit {
+  background: #1f2937;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.card {
+  background: white;
+  color: black;
+  padding: 6px;
+  margin: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#hand {
+  position: fixed;
+  bottom: 60px;
+  left: 0;
+  right: 0;
+  background: #111827;
+  padding: 10px;
+  display: flex;
+  overflow-x: auto;
+}
+
+#actions {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #111827;
+  padding: 10px;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  font-size: 18px;
+}
