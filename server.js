@@ -8,10 +8,6 @@ app.use(express.static("public"));
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-/* =========================
-   STATO
-========================= */
-
 let players = [];
 let gameState = "WAITING";
 
@@ -21,14 +17,6 @@ let table = { C: [], D: [], S: [], B: [] };
 let dealerIndex = null;
 let chosenSuit = null;
 let turn = null;
-
-/* =========================
-   UTILS
-========================= */
-
-function findPlayer(ws) {
-  return players.find(p => p.ws === ws);
-}
 
 function createDeck() {
   const suits = ["C", "D", "S", "B"];
@@ -43,19 +31,38 @@ function createDeck() {
   return d.sort(() => Math.random() - 0.5);
 }
 
+function findPlayer(ws) {
+  return players.find(p => p.ws === ws);
+}
+
 function order(v) {
   return ["A","2","3","4","5","6","7","F","H","R"].indexOf(v);
 }
 
-/* =========================
-   START GAME
-========================= */
+function broadcast() {
+  players.forEach((p, i) => {
+    if (p.ws.readyState !== 1) return;
+
+    p.ws.send(JSON.stringify({
+      gameState,
+      playersCount: players.length,
+      players: players.map(x => x.name || "Anon"),
+      hand: p.hand || [],
+      table,
+      dealerIndex,
+      chosenSuit,
+      turn,
+      yourIndex: i,
+      yourTurn: gameState === "IN_GAME" && turn === i
+    }));
+  });
+}
 
 function startGame() {
   deck = createDeck();
   table = { C: [], D: [], S: [], B: [] };
 
-  players.forEach(p => (p.hand = []));
+  players.forEach(p => (p.hand = deck.splice(0, 10)));
 
   dealerIndex = Math.floor(Math.random() * players.length);
   chosenSuit = null;
@@ -64,19 +71,11 @@ function startGame() {
   gameState = "PICK_SUIT";
 }
 
-/* =========================
-   START CHECK
-========================= */
-
 function tryStart() {
   if (players.length === 4 && gameState === "WAITING") {
     startGame();
   }
 }
-
-/* =========================
-   START PLAYER
-========================= */
 
 function findStartingPlayer() {
   for (let i = 0; i < players.length; i++) {
@@ -87,43 +86,12 @@ function findStartingPlayer() {
   return 0;
 }
 
-/* =========================
-   MOVE VALID
-========================= */
-
 function isValid(card, suit) {
   if (table[suit].length === 0) return card.value === "5";
 
   const top = table[suit][table[suit].length - 1];
   return Math.abs(order(card.value) - order(top.value)) === 1;
 }
-
-/* =========================
-   BROADCAST
-========================= */
-
-function broadcast() {
-  players.forEach((p, i) => {
-    if (p.ws.readyState !== 1) return;
-
-    p.ws.send(JSON.stringify({
-      players: players.map(x => x.name),
-      count: players.length,
-      gameState,
-      dealerIndex,
-      chosenSuit,
-      table,
-      hand: p.hand,
-      turn,
-      yourTurn: gameState === "IN_GAME" && turn === i,
-      yourIndex: i
-    }));
-  });
-}
-
-/* =========================
-   WS
-========================= */
 
 wss.on("connection", (ws) => {
 
@@ -141,57 +109,39 @@ wss.on("connection", (ws) => {
 
   ws.on("message", (msg) => {
     const data = JSON.parse(msg);
-    const pIndex = players.findIndex(p => p.ws === ws);
+    const i = players.findIndex(p => p.ws === ws);
 
     if (data.type === "setName") {
-      players[pIndex].name = data.name;
+      players[i].name = data.name;
     }
-
-    /* =========================
-       CHOOSE SUIT
-    ========================= */
 
     if (data.type === "chooseSuit") {
       if (gameState !== "PICK_SUIT") return;
-      if (pIndex !== dealerIndex) return;
+      if (i !== dealerIndex) return;
 
       chosenSuit = data.suit;
-
-      deck = createDeck();
-
-      players.forEach(p => {
-        p.hand = deck.splice(0, 10);
-      });
 
       gameState = "IN_GAME";
       turn = findStartingPlayer();
     }
 
-    /* =========================
-       PLAY
-    ========================= */
-
     if (data.type === "play") {
       if (gameState !== "IN_GAME") return;
-      if (turn !== pIndex) return;
+      if (turn !== i) return;
 
-      const card = players[pIndex].hand[data.index];
+      const card = players[i].hand[data.index];
       if (!card) return;
 
       if (isValid(card, card.suit)) {
         table[card.suit].push(card);
-        players[pIndex].hand.splice(data.index, 1);
+        players[i].hand.splice(data.index, 1);
 
         turn = (turn + 1) % players.length;
       }
     }
 
-    /* =========================
-       PASS
-    ========================= */
-
     if (data.type === "pass") {
-      if (turn === pIndex) {
+      if (turn === i) {
         turn = (turn + 1) % players.length;
       }
     }
