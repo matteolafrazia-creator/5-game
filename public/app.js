@@ -161,6 +161,7 @@ function renderHeader() {
   if (state.gameState === "ABORTED") status = "Partita terminata";
 
   div.innerHTML = `
+    <button id="topExitBtn" class="topExitBtn">Esci</button>
     <h2>5 · Mano ${state.handNumber || 1}/10</h2>
     <div class="roomCode">Codice: <strong>${state.roomCode}</strong></div>
     <div>${status}</div>
@@ -169,6 +170,13 @@ function renderHeader() {
   `;
 
   app.appendChild(div);
+
+  document.getElementById("topExitBtn").onclick = () => {
+    if (confirm("Vuoi davvero uscire dalla partita?")) {
+      ws.send(JSON.stringify({ type: "leaveRoom" }));
+      clearSession();
+    }
+  };
 }
 
 function renderPlayers() {
@@ -304,17 +312,6 @@ function renderActions() {
     pass.onclick = () => ws.send(JSON.stringify({ type: "pass" }));
     div.appendChild(pass);
   }
-
-  const exit = document.createElement("button");
-  exit.innerText = "Esci";
-  exit.className = "exitBtn";
-  exit.onclick = () => {
-    if (confirm("Vuoi davvero uscire dalla partita?")) {
-      ws.send(JSON.stringify({ type: "leaveRoom" }));
-      clearSession();
-    }
-  };
-  div.appendChild(exit);
 
   app.appendChild(div);
 }
