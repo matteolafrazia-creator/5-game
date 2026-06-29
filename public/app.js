@@ -193,6 +193,7 @@ function renderHeader() {
 
 async function copyRoomCode() {
   const text = state.roomCode;
+
   try {
     await navigator.clipboard.writeText(text);
     showSmallToast("Codice copiato");
@@ -202,10 +203,16 @@ async function copyRoomCode() {
 }
 
 async function shareRoomCode() {
-  const text = `Vieni a giocare a 5! Codice partita: ${state.roomCode}`;
+  const url = location.origin;
+  const text = `Vieni a giocare a 5!\nLink: ${url}\nCodice partita: ${state.roomCode}`;
+
   try {
     if (navigator.share) {
-      await navigator.share({ title: "5", text });
+      await navigator.share({
+        title: "5",
+        text,
+        url
+      });
     } else {
       await navigator.clipboard.writeText(text);
       showSmallToast("Invito copiato");
@@ -222,9 +229,15 @@ function renderPlayers() {
   state.players?.forEach((p, i) => {
     const el = document.createElement("div");
     el.className = "player";
-    if (i === state.turn && state.gameState === "IN_GAME") el.classList.add("active");
 
-    const ready = state.gameState === "HAND_OVER" ? (p.readyNext ? " · pronto" : " · attesa") : "";
+    if (i === state.turn && state.gameState === "IN_GAME") {
+      el.classList.add("active");
+    }
+
+    const ready = state.gameState === "HAND_OVER"
+      ? (p.readyNext ? " · pronto" : " · attesa")
+      : "";
+
     el.innerText = `${p.name} · ${p.cards} carte · ${p.totalScore || 0} pt${ready} ${p.connected ? "" : "(offline)"}`;
 
     div.appendChild(el);
@@ -312,6 +325,7 @@ function renderTable() {
 function getCardsByRank(suit) {
   const col = state.table?.[suit];
   const map = {};
+
   if (!col) return map;
 
   col.up?.forEach(card => map[card.rank] = card);
@@ -332,7 +346,11 @@ function renderHand() {
 
     img.onclick = () => {
       if (!state.yourTurn) return;
-      ws.send(JSON.stringify({ type: "play", index }));
+
+      ws.send(JSON.stringify({
+        type: "play",
+        index
+      }));
     };
 
     wrap.appendChild(img);
@@ -348,7 +366,11 @@ function renderActions() {
   if (state.gameState === "IN_GAME") {
     const pass = document.createElement("button");
     pass.innerText = "Passo";
-    pass.onclick = () => ws.send(JSON.stringify({ type: "pass" }));
+
+    pass.onclick = () => {
+      ws.send(JSON.stringify({ type: "pass" }));
+    };
+
     div.appendChild(pass);
   }
 
@@ -373,11 +395,19 @@ function renderSuitOverlay() {
     app.appendChild(overlay);
 
     const box = document.getElementById("suitButtons");
+
     SUITS.forEach(suit => {
       const img = document.createElement("img");
       img.className = "chooseSuitCard";
       img.src = cardImg({ suit, rank: "5" });
-      img.onclick = () => ws.send(JSON.stringify({ type: "chooseSuit", suit }));
+
+      img.onclick = () => {
+        ws.send(JSON.stringify({
+          type: "chooseSuit",
+          suit
+        }));
+      };
+
       box.appendChild(img);
     });
   } else {
@@ -387,6 +417,7 @@ function renderSuitOverlay() {
         <p>${state.players[state.dealerIndex]?.name} sta scegliendo il seme.</p>
       </div>
     `;
+
     app.appendChild(overlay);
   }
 }
@@ -397,7 +428,9 @@ function renderEndOverlay() {
   const overlay = document.createElement("div");
   overlay.className = "overlay";
 
-  const scores = state.handResult.scores.map(s => `<li>${s.name}: ${s.points} punti</li>`).join("");
+  const scores = state.handResult.scores
+    .map(s => `<li>${s.name}: ${s.points} punti</li>`)
+    .join("");
 
   const standings = state.handResult.showStandings
     ? `<h3>${state.handResult.final ? "Classifica finale" : "Classifica a metà partita"}</h3>
@@ -424,13 +457,21 @@ function renderEndOverlay() {
   app.appendChild(overlay);
 
   const ready = document.getElementById("readyNextBtn");
+
   if (ready) {
     ready.disabled = !!meReady;
-    ready.onclick = () => ws.send(JSON.stringify({ type: "readyNext" }));
+    ready.onclick = () => {
+      ws.send(JSON.stringify({ type: "readyNext" }));
+    };
   }
 
   const reset = document.getElementById("resetMatchBtn");
-  if (reset) reset.onclick = () => ws.send(JSON.stringify({ type: "resetMatch" }));
+
+  if (reset) {
+    reset.onclick = () => {
+      ws.send(JSON.stringify({ type: "resetMatch" }));
+    };
+  }
 }
 
 function renderAbortedOverlay() {
@@ -461,14 +502,22 @@ function showTurnToast() {
   const toast = document.createElement("div");
   toast.className = "turnToast";
   toast.innerText = "È il tuo turno";
+
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 1600);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 1600);
 }
 
 function showSmallToast(text) {
   const toast = document.createElement("div");
   toast.className = "smallToast";
   toast.innerText = text;
+
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 1400);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 1400);
 }
