@@ -1,140 +1,250 @@
-const ws = new WebSocket(location.origin.replace("http", "ws"));
+const http = require("http");
+const express = require("express");
+const WebSocket = require("ws");
 
-let state = {};
+const app = express();
+const PORT = process.env.PORT || 10000;
 
-ws.onmessage = (msg) => {
-  state = JSON.parse(msg.data);
+app.use(express.static("public"));
 
-  renderTop();
-  renderTable();
-  renderHand();
-  renderActions();
-};
-
-function renderTop() {
-  document.getElementById("info").innerText =
-    `Giocatori: ${state.playersCount}/4`;
-
-  let text = "";
-
-  if (state.gameState === "WAITING") {
-    text = "In attesa giocatori...";
-  }
-
-  if (state.gameState === "PICK_SUIT") {
-    text = "Il mazziere sta scegliendo il seme...";
-  }
-
-  if (state.gameState === "IN_GAME") {
-    text = state.yourTurn ? "👉 IL TUO TURNO" : "Attendi...";
-  }
-
-  document.getElementById("turnInfo").innerText = text;
-}
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
 /* =========================
-   TAVOLO
+   STATO
 ========================= */
 
-function renderTable() {
-  const el = document.getElementById("table");
-  el.innerHTML = "";
+let players = [];
+let gameState = "WAITING";
 
-  if (!state.table) return;
+let deck = [];
+let table = { C: [], D: [], S: [], B: [] };
 
-  Object.keys(state.table).forEach(suit => {
-    const box = document.createElement("div");
-    box.className = "suit";
+let turn = null;
+let dealerIndex = null;
+let chosenSuit = null;
 
-    box.innerHTML = `<b>${suit}</b>`;
-
-    state.table[suit].forEach(c => {
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerText = `${c.value} ${c.suit}`;
-      box.appendChild(card);
-    });
-
-    el.appendChild(box);
-  });
-}
+let winner = null;
 
 /* =========================
-   MANO
+   UTILS
 ========================= */
 
-function renderHand() {
-  const el = document.getElementById("hand");
-  el.innerHTML = "";
+function createDeck() {
+  const suits = ["C", "D", "S", "B"];
+  const values = ["A","2","3","4","5","6","7","F","H","R"];
 
-  if (!state.hand) return;
-
-  state.hand.forEach((c, i) => {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerText = `${c.value} ${c.suit}`;
-
-    card.onclick = () => {
-      if (!state.yourTurn) return;
-
-      ws.send(JSON.stringify({
-        type: "play",
-        index: i
-      }));
-    };
-
-    el.appendChild(card);
-  });
-}
-
-/* =========================
-   AZIONI
-========================= */
-
-function renderActions() {
-  const el = document.getElementById("actions");
-  el.innerHTML = "";
-
-  /* =========================
-     PICK SUIT FIX (MAZZIERE)
-  ========================= */
-
-  if (state.gameState === "PICK_SUIT") {
-
-    // ❗ FIX VERO: confronta INDEX, non "0"
-    if (state.dealer === state.yourIndex) {
-      ["C", "D", "S", "B"].forEach(s => {
-        const btn = document.createElement("button");
-        btn.innerText = `Scegli ${s}`;
-
-        btn.onclick = () => {
-          ws.send(JSON.stringify({
-            type: "chooseSuit",
-            suit: s
-          }));
-        };
-
-        el.appendChild(btn);
-      });
-    } else {
-      el.innerText = "Attesa scelta mazziere...";
+  let d = [];
+  for (let s of suits) {
+    for (let v of values) {
+      d.push({ suit: s, value: v });
     }
   }
+  return d.sort(() => Math.random() - 0.5);
+}
 
-  /* =========================
-     IN GAME
-  ========================= */
+function findPlayer(ws) {
+  return players.find(p => p.ws === ws);
+}
 
-  if (state.gameState === "IN_GAME") {
-    const btn = document.createElement("button");
-    btn.innerText = "PASSO";
+function order(v) {
+  return ["A","2","3","4","5","6","7","F","H","R"].indexOf(v);
+}
 
-    btn.onclick = () => {
-      if (!state.yourTurn) return;
+/* =========================
+   START
+========================= */
 
-      ws.send(JSON.stringify({ type: "pass" }));
-    };
+function startGameSetup() {
+  deck = createDeck();
+  table = { C: [], D: [], S: [], B: [] };
 
-    el.appendChild(btn);
+  players.forEach((p, i) => {
+    p.id = i;
+    p.name = p.name || `Player ${i+1}`;
+    p.hand = [];
+  });
+
+  dealerIndex = Math.floor(Math.random() * 4);
+  chosenSuit = null;
+  turn = null;
+  winner = null;
+
+  gameState = "PICK_SUIT";
+
+  console.log("➡️ PICK_SUIT");
+}
+
+function tryStart() {
+  if (gameState !== "WAITING") return;
+  if (players.length !== 4) return;
+
+  startGameSetup();
+}
+
+/* =========================
+   REGOLE
+========================= */
+
+function isValidMove(card, suit) {
+  if (table[suit].length === 0) {
+    return card.value === "5";
+  }
+
+  const top = table[suit][table[suit].length - 1];
+  return Math.abs(order(card.value) - order(top.value)) === 1;
+}
+
+function findStartingPlayer() {
+  for (let i = 0; i < players.length; i++) {
+    if (players[i].hand.some(c => c.value === "5" && c.suit === chosenSuit)) {
+      return i;
+    }
+  }
+  return 0;
+}
+
+/* =========================
+   FINE PARTITA
+========================= */
+
+function checkWinner() {
+  const w = players.find(p => p.hand.length === 0);
+  if (w) {
+    winner = w.name;
+    gameState = "FINISHED";
   }
 }
+
+/* =========================
+   BROADCAST
+========================= */
+
+function broadcast() {
+  players.forEach((p, i) => {
+    if (p.ws.readyState !== 1) return;
+
+    p.ws.send(JSON.stringify({
+      type: "state",
+      gameState,
+      playersCount: players.length,
+      hand: p.hand,
+      table,
+      turn,
+      yourTurn: gameState === "IN_GAME" && turn === i,
+      dealer: dealerIndex,
+      chosenSuit,
+      yourIndex: i,
+      players: players.map(pl => ({
+        name: pl.name,
+        cards: pl.hand.length
+      })),
+      winner
+    }));
+  });
+}
+
+/* =========================
+   WS
+========================= */
+
+wss.on("connection", (ws) => {
+
+  let player = findPlayer(ws);
+
+  if (!player) {
+    player = {
+      ws,
+      name: null,
+      hand: [],
+    };
+    players.push(player);
+  } else {
+    player.ws = ws;
+  }
+
+  tryStart();
+  broadcast();
+
+  ws.on("message", (msg) => {
+    const data = JSON.parse(msg);
+
+    const pIndex = players.findIndex(p => p.ws === ws);
+    if (pIndex === -1) return;
+
+    const p = players[pIndex];
+
+    /* =========================
+       NAME
+    ========================= */
+
+    if (data.type === "setName") {
+      p.name = data.name;
+      broadcast();
+    }
+
+    /* =========================
+       SUIT
+    ========================= */
+
+    if (data.type === "chooseSuit") {
+      if (gameState !== "PICK_SUIT") return;
+      if (pIndex !== dealerIndex) return;
+
+      chosenSuit = data.suit;
+
+      deck = createDeck();
+
+      players.forEach(pl => {
+        pl.hand = deck.splice(0, 10);
+      });
+
+      gameState = "IN_GAME";
+      turn = findStartingPlayer();
+
+      broadcast();
+    }
+
+    /* =========================
+       PLAY
+    ========================= */
+
+    if (data.type === "play") {
+      if (gameState !== "IN_GAME") return;
+      if (turn !== pIndex) return;
+
+      const card = p.hand[data.index];
+      if (!card) return;
+
+      if (isValidMove(card, card.suit)) {
+        table[card.suit].push(card);
+        p.hand.splice(data.index, 1);
+
+        checkWinner();
+
+        if (gameState !== "FINISHED") {
+          turn = (turn + 1) % players.length;
+        }
+      }
+
+      broadcast();
+    }
+
+    /* =========================
+       PASS
+    ========================= */
+
+    if (data.type === "pass") {
+      if (gameState !== "IN_GAME") return;
+      if (turn !== pIndex) return;
+
+      turn = (turn + 1) % players.length;
+
+      broadcast();
+    }
+  });
+});
+
+server.listen(PORT, () => {
+  console.log("Gioco 5 online");
+});
