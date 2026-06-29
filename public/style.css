@@ -1,630 +1,621 @@
-* {
-  box-sizing: border-box;
-}
+const app = document.getElementById("app");
+const ws = new WebSocket(location.origin.replace("http", "ws"));
 
-html, body {
-  margin: 0;
-  height: 100%;
-  background: #0f5132;
-  color: #fff;
-  font-family: Arial, sans-serif;
-  overflow: hidden;
-}
+let state = null;
+let joined = false;
+let errorMessage = "";
 
-#app {
-  height: 100vh;
-  height: 100dvh;
-  display: grid;
-  grid-template-rows: auto auto auto 1fr auto auto;
-  gap: 4px;
-  padding: 6px;
-}
+const SUITS = ["CP", "DN", "SP", "BA"];
+const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
+const VERTICAL_SLOTS = ["R", "C", "F", "7", "6", "5", "4", "3", "2", "A"];
 
-.screen {
-  max-width: 360px;
-  margin: 60px auto;
-  text-align: center;
-}
+ws.onopen = () => {
+  const savedId = localStorage.getItem("five_player_id");
+  const savedName = localStorage.getItem("five_player_name");
+  const savedRoom = localStorage.getItem("five_room_code");
 
-.startScreen h1 {
-  font-size: 56px;
-  margin-bottom: 0;
-}
-
-input, button {
-  padding: 10px;
-  margin: 6px;
-  font-size: 16px;
-}
-
-.startScreen input {
-  width: calc(100% - 16px);
-  border-radius: 8px;
-  border: none;
-}
-
-.startScreen button {
-  width: calc(100% - 16px);
-  border: none;
-  border-radius: 10px;
-  background: #ffd54f;
-  color: #111;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.joinBox {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.25);
-}
-
-.errorBox {
-  background: #ffdddd;
-  color: #8a0000;
-  padding: 8px;
-  border-radius: 8px;
-  margin: 10px 0;
-}
-
-.betaLabel {
-  margin-top: 18px;
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.header {
-  position: relative;
-  background: rgba(0,0,0,0.72);
-  border-radius: 10px;
-  padding: 7px 62px 7px 7px;
-  backdrop-filter: blur(6px);
-  font-size: 13px;
-}
-
-.header h2 {
-  margin: 0 0 2px 0;
-  font-size: 17px;
-}
-
-.topExitBtn {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  padding: 6px 9px;
-  margin: 0;
-  font-size: 12px;
-  min-width: auto;
-  border: none;
-  border-radius: 8px;
-  background: #ef5350;
-  color: #fff;
-  cursor: pointer;
-}
-
-.roomCode {
-  color: #ffd54f;
-  font-size: 13px;
-  margin-bottom: 2px;
-}
-
-.miniBtn {
-  padding: 3px 6px;
-  margin: 0 2px;
-  font-size: 11px;
-  min-width: auto;
-  border-radius: 6px;
-  border: none;
-  background: #ffd54f;
-  color: #111;
-  cursor: pointer;
-}
-
-.message {
-  margin-top: 3px;
-  color: #ffe082;
-  font-size: 12px;
-}
-
-.players {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-}
-
-.player {
-  background: rgba(255,255,255,0.15);
-  padding: 5px;
-  border-radius: 7px;
-  font-size: 11px;
-  text-align: center;
-  min-width: 0;
-}
-
-.player.active {
-  background: #ffd54f;
-  color: #111;
-  font-weight: bold;
-}
-
-.lastCardBox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: rgba(0,0,0,0.25);
-  padding: 4px;
-  border-radius: 8px;
-  font-size: 12px;
-  min-height: 34px;
-  animation: lastCardAppear 0.25s ease-out both;
-}
-
-.lastCardBox img {
-  width: 26px;
-  border-radius: 3px;
-}
-
-@keyframes lastCardAppear {
-  from {
-    opacity: 0.4;
-    transform: translateY(-4px);
+  if (savedId && savedName && savedRoom) {
+    joined = true;
+    ws.send(JSON.stringify({
+      type: "joinRoom",
+      playerId: savedId,
+      name: savedName,
+      roomCode: savedRoom
+    }));
+  } else {
+    renderStart();
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+};
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+
+  if (data.type === "joined") {
+    localStorage.setItem("five_player_id", data.playerId);
+    localStorage.setItem("five_room_code", data.roomCode);
+    joined = true;
+    return;
   }
-}
 
-.table {
-  min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-}
-
-.suitColumn {
-  min-height: 0;
-  background: rgba(0,0,0,0.2);
-  border-radius: 10px;
-  padding: 4px;
-  text-align: center;
-  overflow: hidden;
-  display: grid;
-  grid-template-rows: auto 1fr;
-}
-
-.suitTitle {
-  font-weight: bold;
-  font-size: 11px;
-  margin-bottom: 2px;
-}
-
-.fixedColumnGrid {
-  min-height: 0;
-  display: grid;
-  grid-template-rows: repeat(10, 1fr);
-  align-items: center;
-  justify-items: center;
-  height: 100%;
-}
-
-.cardSlot {
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.fiveSlot {
-  background: rgba(255, 213, 79, 0.12);
-  border-radius: 6px;
-}
-
-.tableCard {
-  max-height: 100%;
-  width: auto;
-  max-width: min(10vw, 58px);
-  display: block;
-  border-radius: 4px;
-  position: relative;
-  z-index: 2;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.35);
-}
-
-.tableCardPlayed {
-  animation: cardPlayed 0.28s ease-out both;
-  box-shadow: 0 0 14px rgba(255, 213, 79, 0.9), 0 3px 8px rgba(0,0,0,0.45);
-}
-
-@keyframes cardPlayed {
-  from {
-    opacity: 0.3;
-    transform: scale(1.18) translateY(-8px);
+  if (data.type === "left") {
+    clearSession();
+    state = null;
+    joined = false;
+    renderStart();
+    return;
   }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
+
+  if (data.type === "error") {
+    errorMessage = data.message;
+    joined = false;
+    renderStart();
+    return;
+  }
+
+  const wasMyTurn = state?.yourTurn;
+  state = data;
+  joined = true;
+  render();
+
+  if (!wasMyTurn && state.yourTurn) showTurnToast();
+};
+
+function clearSession() {
+  localStorage.removeItem("five_player_id");
+  localStorage.removeItem("five_room_code");
+}
+
+function leaveGame() {
+  if (!confirm("Vuoi davvero uscire dalla partita?")) return;
+
+  try {
+    ws.send(JSON.stringify({ type: "leaveRoom" }));
+  } catch {}
+
+  clearSession();
+  state = null;
+  joined = false;
+  errorMessage = "";
+  renderStart();
+}
+
+function cardImg(card) {
+  return `cards/${card.suit}_${card.rank}.png`;
+}
+
+function isLastPlayed(card) {
+  return (
+    state.lastCard &&
+    card.suit === state.lastCard.suit &&
+    card.rank === state.lastCard.rank
+  );
+}
+
+function renderStart() {
+  const savedName = localStorage.getItem("five_player_name") || "";
+
+  app.innerHTML = `
+    <div class="screen startScreen">
+      <h1>5</h1>
+      <p>Gioca online con i tuoi amici</p>
+
+      ${errorMessage ? `<div class="errorBox">${errorMessage}</div>` : ""}
+
+      <input id="nameInput" placeholder="Nome giocatore" value="${savedName}" />
+
+      <button id="createBtn">Crea partita</button>
+
+      <div class="joinBox">
+        <input id="roomInput" placeholder="Codice partita" maxlength="6" />
+        <button id="joinBtn">Entra in partita</button>
+      </div>
+
+      <button id="rulesBtn" class="rulesBtn">❓ Come si gioca?</button>
+
+      <div class="betaLabel">Beta 0.9.0</div>
+    </div>
+  `;
+
+  document.getElementById("createBtn").onclick = () => {
+    const name = getName();
+    localStorage.setItem("five_player_name", name);
+    errorMessage = "";
+    joined = true;
+
+    ws.send(JSON.stringify({
+      type: "createRoom",
+      playerId: localStorage.getItem("five_player_id"),
+      name
+    }));
+  };
+
+  document.getElementById("joinBtn").onclick = () => {
+    const name = getName();
+    const roomCode = document.getElementById("roomInput").value.trim().toUpperCase();
+
+    if (!roomCode) {
+      errorMessage = "Inserisci un codice partita.";
+      renderStart();
+      return;
+    }
+
+    localStorage.setItem("five_player_name", name);
+    errorMessage = "";
+    joined = true;
+
+    ws.send(JSON.stringify({
+      type: "joinRoom",
+      playerId: localStorage.getItem("five_player_id"),
+      name,
+      roomCode
+    }));
+  };
+
+  document.getElementById("rulesBtn").onclick = () => {
+    renderRulesOverlay();
+  };
+}
+
+function getName() {
+  return document.getElementById("nameInput").value.trim() || "Giocatore";
+}
+
+function render() {
+  if (!joined) return renderStart();
+  if (!state) return;
+
+  app.innerHTML = "";
+  renderHeader();
+  renderPlayers();
+  renderLastCard();
+  renderTable();
+  renderHand();
+  renderActions();
+  renderSuitOverlay();
+  renderEndOverlay();
+  renderAbortedOverlay();
+  renderPassWarningOverlay();
+}
+
+function renderHeader() {
+  const div = document.createElement("div");
+  div.className = "header";
+
+  let status = "";
+  if (state.gameState === "WAITING") status = `In attesa giocatori (${state.playersCount}/4)`;
+  if (state.gameState === "PICK_SUIT") status = state.yourIndex === state.dealerIndex ? "Devi scegliere il seme" : `Attesa scelta seme da ${state.players[state.dealerIndex]?.name}`;
+  if (state.gameState === "IN_GAME") status = state.yourTurn ? "È il tuo turno" : `Turno di ${state.players[state.turn]?.name}`;
+  if (state.gameState === "HAND_OVER") status = "Mano conclusa";
+  if (state.gameState === "GAME_OVER") status = "Partita conclusa";
+  if (state.gameState === "ABORTED") status = "Partita terminata";
+
+  div.innerHTML = `
+    <button id="topExitBtn" class="topExitBtn">Esci</button>
+    <h2>5 · Mano ${state.handNumber || 1}/10</h2>
+    <div class="roomCode">
+      Codice: <strong>${state.roomCode}</strong>
+      <button id="copyCodeBtn" class="miniBtn">Copia</button>
+      <button id="shareCodeBtn" class="miniBtn">Condividi</button>
+    </div>
+    <div>${status}</div>
+    <div class="message">${state.message || ""}</div>
+    <div>${state.chosenSuit ? "Seme scelto: " + SUIT_LABELS[state.chosenSuit] : ""}</div>
+  `;
+
+  app.appendChild(div);
+
+  document.getElementById("topExitBtn").onclick = leaveGame;
+  document.getElementById("copyCodeBtn").onclick = async () => await copyRoomCode();
+  document.getElementById("shareCodeBtn").onclick = async () => await shareRoomCode();
+}
+
+async function copyRoomCode() {
+  const text = state.roomCode;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    showSmallToast("Codice copiato");
+  } catch {
+    showSmallToast("Codice: " + text);
   }
 }
 
-.fixedColumnGrid .cardSlot:nth-child(1) { z-index: 10; }
-.fixedColumnGrid .cardSlot:nth-child(2) { z-index: 9; }
-.fixedColumnGrid .cardSlot:nth-child(3) { z-index: 8; }
-.fixedColumnGrid .cardSlot:nth-child(4) { z-index: 7; }
-.fixedColumnGrid .cardSlot:nth-child(5) { z-index: 6; }
-.fixedColumnGrid .cardSlot:nth-child(6) { z-index: 5; }
-.fixedColumnGrid .cardSlot:nth-child(7) { z-index: 6; }
-.fixedColumnGrid .cardSlot:nth-child(8) { z-index: 7; }
-.fixedColumnGrid .cardSlot:nth-child(9) { z-index: 8; }
-.fixedColumnGrid .cardSlot:nth-child(10) { z-index: 9; }
+async function shareRoomCode() {
+  const url = location.origin;
+  const text = `Vieni a giocare a 5!\nLink: ${url}\nCodice partita: ${state.roomCode}`;
 
-.completedSuit {
-  background: rgba(255, 213, 79, 0.18);
-  border: 2px solid #ffd54f;
-  animation: completedGlow 1s ease-out both;
-}
-
-@keyframes completedGlow {
-  0% {
-    box-shadow: 0 0 0 rgba(255, 213, 79, 0);
-  }
-  40% {
-    box-shadow: 0 0 24px rgba(255, 213, 79, 0.9);
-  }
-  100% {
-    box-shadow: 0 0 8px rgba(255, 213, 79, 0.35);
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "5", text, url });
+    } else {
+      await navigator.clipboard.writeText(text);
+      showSmallToast("Invito copiato");
+    }
+  } catch {
+    showSmallToast("Invito non condiviso");
   }
 }
 
-.completedStack {
-  position: relative;
-  width: 56px;
-  height: 78px;
-  margin: 12px auto 4px;
-  animation: compactStack 0.45s ease-out both;
+function renderPlayers() {
+  const div = document.createElement("div");
+  div.className = "players";
+
+  state.players?.forEach((p, i) => {
+    const el = document.createElement("div");
+    el.className = "player";
+
+    if (i === state.turn && state.gameState === "IN_GAME") {
+      el.classList.add("active");
+    }
+
+    const ready = state.gameState === "HAND_OVER"
+      ? (p.readyNext ? " · pronto" : " · attesa")
+      : "";
+
+    el.innerText = `${p.name} · ${p.cards} carte · ${p.totalScore || 0} pt${ready} ${p.connected ? "" : "(offline)"}`;
+
+    div.appendChild(el);
+  });
+
+  app.appendChild(div);
 }
 
-.stackCard {
-  position: absolute;
-  width: 52px;
-  left: calc(var(--i) * 2px);
-  top: calc(var(--i) * 2px);
-  border-radius: 5px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.35);
-  transform: rotate(calc((var(--i) - 2) * 2deg));
+function renderLastCard() {
+  if (!state.lastCard) return;
+
+  const div = document.createElement("div");
+  div.className = "lastCardBox";
+  div.innerHTML = `<span>Ultima carta:</span> <img src="${cardImg(state.lastCard)}" /> <span>${state.lastCard.playerName}</span>`;
+  app.appendChild(div);
 }
 
-.completedLabel {
-  font-size: 11px;
-  color: #ffe082;
-  font-weight: bold;
+function renderTable() {
+  const table = document.createElement("div");
+  table.className = "table";
+
+  SUITS.forEach(suit => {
+    const col = document.createElement("div");
+    col.className = "suitColumn";
+
+    const title = document.createElement("div");
+    title.className = "suitTitle";
+    title.innerText = SUIT_LABELS[suit];
+    col.appendChild(title);
+
+    const cardsByRank = getCardsByRank(suit);
+    const isComplete = Object.keys(cardsByRank).length === 10;
+
+    if (isComplete) {
+      col.classList.add("completedSuit");
+
+      const stack = document.createElement("div");
+      stack.className = "completedStack";
+
+      VERTICAL_SLOTS.slice(0, 5).forEach((rank, idx) => {
+        const card = cardsByRank[rank];
+        if (!card) return;
+
+        const img = document.createElement("img");
+        img.className = "stackCard";
+        img.src = cardImg(card);
+        img.style.setProperty("--i", idx);
+        stack.appendChild(img);
+      });
+
+      const label = document.createElement("div");
+      label.className = "completedLabel";
+      label.innerText = "Completo";
+
+      col.appendChild(stack);
+      col.appendChild(label);
+    } else {
+      const grid = document.createElement("div");
+      grid.className = "fixedColumnGrid";
+
+      VERTICAL_SLOTS.forEach(rank => {
+        const slot = document.createElement("div");
+        slot.className = rank === "5" ? "cardSlot fiveSlot" : "cardSlot";
+
+        const card = cardsByRank[rank];
+
+        if (card) {
+          const img = document.createElement("img");
+          img.className = isLastPlayed(card) ? "tableCard tableCardPlayed" : "tableCard";
+          img.src = cardImg(card);
+          slot.appendChild(img);
+        }
+
+        grid.appendChild(slot);
+      });
+
+      col.appendChild(grid);
+    }
+
+    table.appendChild(col);
+  });
+
+  app.appendChild(table);
 }
 
-@keyframes compactStack {
-  from { transform: scale(1.12) translateY(-8px); opacity: 0.4; }
-  to { transform: scale(1) translateY(0); opacity: 1; }
+function getCardsByRank(suit) {
+  const col = state.table?.[suit];
+  const map = {};
+
+  if (!col) return map;
+
+  col.up?.forEach(card => map[card.rank] = card);
+  if (col.five) map["5"] = col.five;
+  col.down?.forEach(card => map[card.rank] = card);
+
+  return map;
 }
 
-.hand {
-  min-height: 76px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: clamp(2px, 1vw, 8px);
-  padding: 5px;
-  background: rgba(0,0,0,0.72);
-  border: 2px solid transparent;
-  border-radius: 10px;
-  overflow: hidden;
-  transition: border 0.2s, box-shadow 0.2s, background 0.2s;
+function renderHand() {
+  const wrap = document.createElement("div");
+  wrap.className = state.yourTurn ? "hand handActive" : "hand";
+
+  state.hand?.forEach((card, index) => {
+    const img = document.createElement("img");
+    img.className = "handCard";
+    img.src = cardImg(card);
+
+    img.onclick = () => {
+      if (!state.yourTurn) return;
+      ws.send(JSON.stringify({ type: "play", index }));
+    };
+
+    wrap.appendChild(img);
+  });
+
+  app.appendChild(wrap);
 }
 
-.handActive {
-  border: 2px solid #ffd54f;
-  box-shadow: 0 0 18px rgba(255, 213, 79, 0.85);
-  background: rgba(255, 213, 79, 0.18);
-  animation: handTurnPulse 0.7s ease-out both;
-}
+function renderActions() {
+  const div = document.createElement("div");
+  div.className = "actions";
 
-@keyframes handTurnPulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 rgba(255, 213, 79, 0);
-  }
-  45% {
-    transform: scale(1.012);
-    box-shadow: 0 0 22px rgba(255, 213, 79, 0.95);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 18px rgba(255, 213, 79, 0.85);
-  }
-}
-
-.handCard {
-  width: min(9.5vw, 70px);
-  max-height: 92px;
-  object-fit: contain;
-  cursor: pointer;
-  border-radius: 5px;
-  flex: 0 1 auto;
-  min-width: 30px;
-}
-
-.actions {
-  text-align: center;
-  min-height: 44px;
-}
-
-.actions button {
-  min-width: 90px;
-  border: none;
-  border-radius: 8px;
-  background: #ffd54f;
-  color: #111;
-  cursor: pointer;
-}
-
-.suitOverlay,
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 99;
-  background: rgba(0,0,0,0.72);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-}
-
-.suitModal,
-.modal {
-  background: #fff;
-  color: #111;
-  border-radius: 16px;
-  padding: 20px;
-  max-width: 420px;
-  width: 100%;
-  text-align: center;
-  animation: modalIn 0.35s ease-out both;
-}
-
-.victoryModal {
-  animation: victoryIn 0.45s ease-out both;
-}
-
-.trophy {
-  font-size: 44px;
-  animation: trophyPop 0.6s ease-out both;
-}
-
-@keyframes victoryIn {
-  from {
-    transform: scale(0.82) translateY(12px);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes trophyPop {
-  0% {
-    transform: scale(0.4) rotate(-12deg);
-    opacity: 0;
-  }
-  60% {
-    transform: scale(1.25) rotate(8deg);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1) rotate(0);
-  }
-}
-
-.suitCardButtons {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  align-items: center;
-}
-
-.chooseSuitCard {
-  width: 100%;
-  max-width: 80px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-
-.chooseSuitCard:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 8px 18px rgba(0,0,0,0.35);
-}
-
-.modal button {
-  border: none;
-  border-radius: 10px;
-  background: #ffd54f;
-  color: #111;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.modal button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.modal h1 {
-  margin-top: 0;
-}
-
-.modal ul, .modal ol {
-  text-align: left;
-}
-
-@keyframes modalIn {
-  from { transform: scale(0.86); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.turnToast,
-.smallToast {
-  position: fixed;
-  z-index: 120;
-  left: 50%;
-  top: 45%;
-  transform: translate(-50%, -50%);
-  background: #ffd54f;
-  color: #111;
-  font-weight: bold;
-  padding: 18px 28px;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-  animation: toastTurn 1.55s ease-out both;
-}
-
-.turnToast {
-  font-size: 24px;
-}
-
-.smallToast {
-  font-size: 16px;
-}
-
-@keyframes toastTurn {
-  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.85); }
-  20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  80% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -58%) scale(0.96); }
-}
-
-.passWarningOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 130;
-  background: rgba(0,0,0,0.72);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-}
-
-.passWarningModal {
-  background: #fff;
-  color: #111;
-  border-radius: 16px;
-  padding: 22px;
-  max-width: 360px;
-  width: 100%;
-  text-align: center;
-  animation: modalIn 0.25s ease-out both;
-}
-
-.passWarningModal h2 {
-  margin-top: 0;
-}
-
-.passWarningModal button {
-  border: none;
-  border-radius: 10px;
-  background: #ffd54f;
-  color: #111;
-  cursor: pointer;
-  font-weight: bold;
-  padding: 10px 18px;
-}
-
-@media (max-width: 700px) {
-  #app {
-    padding: 4px;
-    gap: 3px;
+  if (state.gameState === "IN_GAME") {
+    const pass = document.createElement("button");
+    pass.innerText = "Passo";
+    pass.onclick = () => ws.send(JSON.stringify({ type: "pass" }));
+    div.appendChild(pass);
   }
 
-  .header {
-    padding: 5px 52px 5px 5px;
-    font-size: 11px;
+  app.appendChild(div);
+}
+
+function renderSuitOverlay() {
+  if (state.gameState !== "PICK_SUIT") return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "suitOverlay";
+
+  if (state.yourIndex === state.dealerIndex) {
+    overlay.innerHTML = `
+      <div class="suitModal">
+        <h2>Scegli il seme</h2>
+        <p>Clicca il 5 del seme scelto.</p>
+        <div id="suitButtons" class="suitCardButtons"></div>
+      </div>
+    `;
+
+    app.appendChild(overlay);
+
+    const box = document.getElementById("suitButtons");
+
+    SUITS.forEach(suit => {
+      const img = document.createElement("img");
+      img.className = "chooseSuitCard";
+      img.src = cardImg({ suit, rank: "5" });
+
+      img.onclick = () => {
+        ws.send(JSON.stringify({ type: "chooseSuit", suit }));
+      };
+
+      box.appendChild(img);
+    });
+  } else {
+    overlay.innerHTML = `
+      <div class="suitModal">
+        <h2>Attesa mazziere</h2>
+        <p>${state.players[state.dealerIndex]?.name} sta scegliendo il seme.</p>
+      </div>
+    `;
+
+    app.appendChild(overlay);
+  }
+}
+
+function renderEndOverlay() {
+  if (!["HAND_OVER", "GAME_OVER"].includes(state.gameState) || !state.handResult) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+
+  const scores = state.handResult.scores
+    .map(s => `<li>${s.name}: ${s.points} punti</li>`)
+    .join("");
+
+  const standings = state.handResult.showStandings
+    ? `<h3>${state.handResult.final ? "Classifica finale" : "Classifica a metà partita"}</h3>
+       <ol>${state.standings.map(s => `<li>${s.name}: ${s.total} punti</li>`).join("")}</ol>`
+    : "";
+
+  const readyCount = state.players.filter(p => p.readyNext).length;
+  const meReady = state.players[state.yourIndex]?.readyNext;
+
+  overlay.innerHTML = `
+    <div class="modal victoryModal">
+      <div class="trophy">🏆</div>
+      <h1>Ha vinto ${state.handResult.winnerName}</h1>
+      <h3>Punteggi mano</h3>
+      <ul>${scores}</ul>
+      ${standings}
+      ${
+        state.gameState === "HAND_OVER"
+          ? `<p>${readyCount}/4 giocatori pronti</p><button id="readyNextBtn">${meReady ? "In attesa degli altri..." : "Pronto"}</button>`
+          : '<button id="resetMatchBtn">Nuova partita</button>'
+      }
+    </div>
+  `;
+
+  app.appendChild(overlay);
+
+  const ready = document.getElementById("readyNextBtn");
+
+  if (ready) {
+    ready.disabled = !!meReady;
+    ready.onclick = () => {
+      ws.send(JSON.stringify({ type: "readyNext" }));
+    };
   }
 
-  .header h2 {
-    font-size: 15px;
-  }
+  const reset = document.getElementById("resetMatchBtn");
 
-  .topExitBtn {
-    top: 5px;
-    right: 5px;
-    font-size: 11px;
-    padding: 5px 7px;
+  if (reset) {
+    reset.onclick = () => {
+      ws.send(JSON.stringify({ type: "resetMatch" }));
+    };
   }
+}
 
-  .message {
-    font-size: 10px;
-  }
+function renderAbortedOverlay() {
+  if (state.gameState !== "ABORTED") return;
 
-  .players {
-    gap: 3px;
-  }
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
 
-  .player {
-    font-size: 9px;
-    padding: 4px 2px;
-  }
+  overlay.innerHTML = `
+    <div class="modal">
+      <h1>Partita terminata</h1>
+      <p>${state.message || ""}</p>
+      <button id="backHomeBtn">Torna alla home</button>
+    </div>
+  `;
 
-  .lastCardBox {
-    font-size: 10px;
-    min-height: 28px;
-  }
+  app.appendChild(overlay);
 
-  .lastCardBox img {
-    width: 22px;
-  }
+  document.getElementById("backHomeBtn").onclick = () => {
+    clearSession();
+    joined = false;
+    state = null;
+    renderStart();
+  };
+}
 
-  .suitColumn {
-    padding: 3px;
-  }
+function renderPassWarningOverlay() {
+  if (!state) return;
+  if (!state.yourTurn) return;
+  if (!state.message) return;
 
-  .suitTitle {
-    font-size: 9px;
-  }
+  const isPassWarning =
+    state.message.includes("Non puoi passare") ||
+    state.message.includes("devi giocare il 5");
 
-  .tableCard {
-    max-width: min(10.5vw, 42px);
-  }
+  if (!isPassWarning) return;
 
-  .hand {
-    min-height: 68px;
-    gap: 1px;
-    padding: 4px;
-  }
+  const overlay = document.createElement("div");
+  overlay.className = "passWarningOverlay";
 
-  .handCard {
-    width: min(9.3vw, 52px);
-    max-height: 70px;
-  }
+  overlay.innerHTML = `
+    <div class="passWarningModal">
+      <h2>Attenzione</h2>
+      <p>${state.message}</p>
+      <button id="closePassWarningBtn">Ho capito</button>
+    </div>
+  `;
 
-  .actions {
-    min-height: 38px;
-  }
+  app.appendChild(overlay);
 
-  .actions button {
-    padding: 8px;
-    font-size: 14px;
-  }
+  document.getElementById("closePassWarningBtn").onclick = () => {
+    overlay.remove();
+  };
+}
 
-  .chooseSuitCard {
-    max-width: 64px;
-  }
 
-  .miniBtn {
-    font-size: 9px;
-    padding: 2px 4px;
-  }
+function renderRulesOverlay() {
+  const overlay = document.createElement("div");
+  overlay.className = "rulesOverlay";
 
-  .trophy {
-    font-size: 36px;
-  }
+  overlay.innerHTML = `
+    <div class="rulesModal">
+      <h2>Come si gioca?</h2>
+
+      <section>
+        <h3>🎯 Scopo del gioco</h3>
+        <p>Lo scopo del gioco è rimanere con meno punti possibile al termine delle 10 mani. Per vincere una mano bisogna essere il primo giocatore a rimanere senza carte; tutti gli altri ricevono un punto per ogni carta rimasta in mano.</p>
+      </section>
+
+      <section>
+        <h3>Come si gioca</h3>
+        <ul>
+          <li>Si gioca in <strong>4 giocatori</strong>.</li>
+          <li>Il mazziere sceglie un seme <strong>prima</strong> della distribuzione.</li>
+          <li>Ogni giocatore riceve <strong>10 carte</strong>.</li>
+          <li>Chi possiede il <strong>5 del seme scelto</strong> apre la mano giocandolo.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Durante la mano</h3>
+        <ul>
+          <li>Ad ogni turno si gioca <strong>una sola carta</strong>.</li>
+          <li>Su un seme già aperto si possono aggiungere solo le carte consecutive.</li>
+          <li>Se possiedi un <strong>5</strong> di un altro seme puoi aprire una nuova colonna.</li>
+          <li>Se non hai nessuna carta giocabile devi premere <strong>Passo</strong>.</li>
+          <li>Se hai almeno una carta giocabile <strong>non puoi passare</strong>.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Fine della mano</h3>
+        <ul>
+          <li>Vince la mano chi termina per primo tutte le proprie carte.</li>
+          <li>Ogni altro giocatore riceve <strong>1 punto per ogni carta rimasta in mano</strong>.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Fine della partita</h3>
+        <ul>
+          <li>La partita è composta da <strong>10 mani</strong>.</li>
+          <li>Dopo la <strong>5ª mano</strong> viene mostrata la classifica provvisoria.</li>
+          <li>Dopo la <strong>10ª mano</strong> viene mostrata la classifica finale.</li>
+          <li>Vince il giocatore con il <strong>minor numero di punti</strong>.</li>
+        </ul>
+      </section>
+
+      <button id="closeRulesBtn">Ho capito</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  document.getElementById("closeRulesBtn").onclick = () => {
+    overlay.remove();
+  };
+}
+
+function showTurnToast() {
+  const toast = document.createElement("div");
+  toast.className = "turnToast";
+  toast.innerText = "È il tuo turno";
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 1600);
+}
+
+function showSmallToast(text) {
+  const toast = document.createElement("div");
+  toast.className = "smallToast";
+  toast.innerText = text;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 1400);
 }

@@ -4,7 +4,6 @@ const ws = new WebSocket(location.origin.replace("http", "ws"));
 let state = null;
 let joined = false;
 let errorMessage = "";
-let dismissedPassWarningKey = null;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
@@ -111,6 +110,8 @@ function renderStart() {
         <button id="joinBtn">Entra in partita</button>
       </div>
 
+      <button id="rulesBtn" class="rulesBtn">❓ Come si gioca?</button>
+
       <div class="betaLabel">Beta 0.9.0</div>
     </div>
   `;
@@ -148,6 +149,10 @@ function renderStart() {
       name,
       roomCode
     }));
+  };
+
+  document.getElementById("rulesBtn").onclick = () => {
+    renderRulesOverlay();
   };
 }
 
@@ -509,9 +514,6 @@ function renderPassWarningOverlay() {
 
   if (!isPassWarning) return;
 
-  const warningKey = `${state.handNumber}-${state.turn}-${state.message}`;
-  if (dismissedPassWarningKey === warningKey) return;
-
   const overlay = document.createElement("div");
   overlay.className = "passWarningOverlay";
 
@@ -526,7 +528,70 @@ function renderPassWarningOverlay() {
   app.appendChild(overlay);
 
   document.getElementById("closePassWarningBtn").onclick = () => {
-    dismissedPassWarningKey = warningKey;
+    overlay.remove();
+  };
+}
+
+
+function renderRulesOverlay() {
+  const overlay = document.createElement("div");
+  overlay.className = "rulesOverlay";
+
+  overlay.innerHTML = `
+    <div class="rulesModal">
+      <h2>Come si gioca?</h2>
+
+      <section>
+        <h3>🎯 Scopo del gioco</h3>
+        <p>Lo scopo del gioco è rimanere con meno punti possibile al termine delle 10 mani. Per vincere una mano bisogna essere il primo giocatore a rimanere senza carte; tutti gli altri ricevono un punto per ogni carta rimasta in mano.</p>
+      </section>
+
+      <section>
+        <h3>Come si gioca</h3>
+        <ul>
+          <li>Si gioca in <strong>4 giocatori</strong>.</li>
+          <li>Il mazziere sceglie un seme <strong>prima</strong> della distribuzione.</li>
+          <li>Ogni giocatore riceve <strong>10 carte</strong>.</li>
+          <li>Chi possiede il <strong>5 del seme scelto</strong> apre la mano giocandolo.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Durante la mano</h3>
+        <ul>
+          <li>Ad ogni turno si gioca <strong>una sola carta</strong>.</li>
+          <li>Su un seme già aperto si possono aggiungere solo le carte consecutive.</li>
+          <li>Se possiedi un <strong>5</strong> di un altro seme puoi aprire una nuova colonna.</li>
+          <li>Se non hai nessuna carta giocabile devi premere <strong>Passo</strong>.</li>
+          <li>Se hai almeno una carta giocabile <strong>non puoi passare</strong>.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Fine della mano</h3>
+        <ul>
+          <li>Vince la mano chi termina per primo tutte le proprie carte.</li>
+          <li>Ogni altro giocatore riceve <strong>1 punto per ogni carta rimasta in mano</strong>.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Fine della partita</h3>
+        <ul>
+          <li>La partita è composta da <strong>10 mani</strong>.</li>
+          <li>Dopo la <strong>5ª mano</strong> viene mostrata la classifica provvisoria.</li>
+          <li>Dopo la <strong>10ª mano</strong> viene mostrata la classifica finale.</li>
+          <li>Vince il giocatore con il <strong>minor numero di punti</strong>.</li>
+        </ul>
+      </section>
+
+      <button id="closeRulesBtn">Ho capito</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  document.getElementById("closeRulesBtn").onclick = () => {
     overlay.remove();
   };
 }
