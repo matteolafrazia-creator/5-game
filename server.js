@@ -9,6 +9,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 let players = [];
+
 let gameState = "WAITING";
 
 let deck = [];
@@ -17,6 +18,8 @@ let table = { C: [], D: [], S: [], B: [] };
 let dealerIndex = null;
 let chosenSuit = null;
 let turn = null;
+
+/* ========================= */
 
 function createDeck() {
   const suits = ["C", "D", "S", "B"];
@@ -39,30 +42,15 @@ function order(v) {
   return ["A","2","3","4","5","6","7","F","H","R"].indexOf(v);
 }
 
-function broadcast() {
-  players.forEach((p, i) => {
-    if (p.ws.readyState !== 1) return;
+/* =========================
+   START SETUP (NO CARTE)
+========================= */
 
-    p.ws.send(JSON.stringify({
-      gameState,
-      playersCount: players.length,
-      players: players.map(x => x.name || "Anon"),
-      hand: p.hand || [],
-      table,
-      dealerIndex,
-      chosenSuit,
-      turn,
-      yourIndex: i,
-      yourTurn: gameState === "IN_GAME" && turn === i
-    }));
-  });
-}
-
-function startGame() {
-  deck = createDeck();
+function startSetup() {
   table = { C: [], D: [], S: [], B: [] };
+  deck = createDeck();
 
-  players.forEach(p => (p.hand = deck.splice(0, 10)));
+  players.forEach(p => (p.hand = []));
 
   dealerIndex = Math.floor(Math.random() * players.length);
   chosenSuit = null;
@@ -71,10 +59,17 @@ function startGame() {
   gameState = "PICK_SUIT";
 }
 
-function tryStart() {
-  if (players.length === 4 && gameState === "WAITING") {
-    startGame();
-  }
+/* =========================
+   DISTRIBUZIONE CARTE
+========================= */
+
+function distributeCards() {
+  players.forEach(p => {
+    p.hand = deck.splice(0, 10);
+  });
+
+  turn = findStartingPlayer();
+  gameState = "IN_GAME";
 }
 
 function findStartingPlayer() {
@@ -86,12 +81,49 @@ function findStartingPlayer() {
   return 0;
 }
 
+/* ========================= */
+
 function isValid(card, suit) {
   if (table[suit].length === 0) return card.value === "5";
 
   const top = table[suit][table[suit].length - 1];
   return Math.abs(order(card.value) - order(top.value)) === 1;
 }
+
+/* =========================
+   BROADCAST
+========================= */
+
+function broadcast() {
+  players.forEach((p, i) => {
+    if (p.ws.readyState !== 1) return;
+
+    p.ws.send(JSON.stringify({
+      gameState,
+      playersCount: players.length,
+      players: players.map(x => x.name || "Anon"),
+      hand: p.hand,
+      table,
+      dealerIndex,
+      chosenSuit,
+      turn,
+      yourIndex: i,
+      yourTurn: gameState === "IN_GAME" && turn === i
+    }));
+  });
+}
+
+/* ========================= */
+
+function tryStart() {
+  if (players.length === 4 && gameState === "WAITING") {
+    startSetup();
+  }
+}
+
+/* =========================
+   WS
+========================= */
 
 wss.on("connection", (ws) => {
 
@@ -115,15 +147,22 @@ wss.on("connection", (ws) => {
       players[i].name = data.name;
     }
 
+    /* =========================
+       SCELTA SEME
+    ========================= */
+
     if (data.type === "chooseSuit") {
       if (gameState !== "PICK_SUIT") return;
       if (i !== dealerIndex) return;
 
       chosenSuit = data.suit;
 
-      gameState = "IN_GAME";
-      turn = findStartingPlayer();
+      distributeCards(); // 👈 ORA parte il gioco
     }
+
+    /* =========================
+       PLAY
+    ========================= */
 
     if (data.type === "play") {
       if (gameState !== "IN_GAME") return;
@@ -140,6 +179,8 @@ wss.on("connection", (ws) => {
       }
     }
 
+    /* ========================= */
+
     if (data.type === "pass") {
       if (turn === i) {
         turn = (turn + 1) % players.length;
@@ -147,15 +188,6 @@ wss.on("connection", (ws) => {
     }
 
     broadcast();
-  });
-
-  ws.on("close", () => {
-    players = players.filter(p => p.ws !== ws);
-
-    if (players.length < 4) {
-      gameState = "WAITING";
-      turn = null;
-    }
   });
 });
 

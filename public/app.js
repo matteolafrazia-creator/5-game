@@ -16,20 +16,21 @@ function render() {
   document.body.innerHTML = "";
 
   /* TOP */
-  const top = document.createElement("h2");
-  top.innerText = `Giocatori: ${state.playersCount}/4`;
-  document.body.appendChild(top);
+  const h = document.createElement("h2");
+  h.innerText = `Giocatori: ${state.playersCount}/4`;
+  document.body.appendChild(h);
 
   const status = document.createElement("h3");
 
   if (state.gameState === "WAITING") {
-    status.innerText = "In attesa giocatori...";
+    status.innerText = "In attesa...";
   }
 
   if (state.gameState === "PICK_SUIT") {
-    status.innerText = state.yourIndex === state.dealerIndex
-      ? "Scegli il seme"
-      : "Attesa mazziere...";
+    status.innerText =
+      state.yourIndex === state.dealerIndex
+        ? "👉 Scegli il seme"
+        : "Attesa mazziere...";
   }
 
   if (state.gameState === "IN_GAME") {
@@ -49,6 +50,13 @@ function render() {
   });
 
   document.body.appendChild(lobby);
+
+  /* SEME SCELTO */
+  if (state.chosenSuit) {
+    const s = document.createElement("h4");
+    s.innerText = "Seme scelto: " + state.chosenSuit;
+    document.body.appendChild(s);
+  }
 
   /* TAVOLO */
   const table = document.createElement("div");
@@ -74,16 +82,16 @@ function render() {
   hand.innerHTML = "<h3>Carte</h3>";
 
   state.hand?.forEach((c, i) => {
-    const card = document.createElement("button");
-    card.innerText = `${c.value} ${c.suit}`;
+    const btn = document.createElement("button");
+    btn.innerText = `${c.value} ${c.suit}`;
 
-    card.onclick = () => {
+    btn.onclick = () => {
       if (!state.yourTurn) return;
 
       ws.send(JSON.stringify({ type: "play", index: i }));
     };
 
-    hand.appendChild(card);
+    hand.appendChild(btn);
   });
 
   document.body.appendChild(hand);
