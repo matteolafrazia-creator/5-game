@@ -450,8 +450,13 @@ function renderEndOverlay() {
   const meReady = state.players[state.yourIndex]?.readyNext;
   const replayAvailable = state.handResult.replay && state.handResult.replay.length > 0;
 
+  const readyList = state.gameState === "HAND_OVER"
+    ? `<div class="readyList">${state.players.map(p => `<div>${p.readyNext ? "✅" : "⏳"} ${p.name}</div>`).join("")}</div>`
+    : "";
+
   overlay.innerHTML = `
     <div class="modal victoryModal ${state.gameState === "GAME_OVER" ? "finalVictoryModal" : ""}">
+      <button id="endExitBtn" class="modalExitBtn">Esci</button>
       <div class="trophy">${state.gameState === "GAME_OVER" ? "🎉" : "🏆"}</div>
       <h1>${state.gameState === "GAME_OVER" ? "Partita conclusa" : "Ha vinto " + state.handResult.winnerName}</h1>
       ${state.gameState === "GAME_OVER" ? `<h2 class="championTitle">Campione: ${state.standings[0]?.name || ""}</h2>` : ""}
@@ -462,7 +467,7 @@ function renderEndOverlay() {
         ${replayAvailable ? '<button id="watchReplayBtn" class="secondaryBtn">Rivedi la mano</button>' : ""}
         ${
           state.gameState === "HAND_OVER"
-            ? `<p>${readyCount}/4 giocatori pronti</p><button id="readyNextBtn">${meReady ? "In attesa degli altri..." : "Pronto"}</button>`
+            ? `<p>${readyCount}/4 giocatori pronti</p>${readyList}<button id="readyNextBtn">${meReady ? "In attesa degli altri..." : "Pronto"}</button>`
             : '<button id="resetMatchBtn">Nuova partita</button>'
         }
       </div>
@@ -470,6 +475,8 @@ function renderEndOverlay() {
   `;
 
   app.appendChild(overlay);
+
+  document.getElementById("endExitBtn").onclick = leaveGame;
 
   const replay = document.getElementById("watchReplayBtn");
   if (replay) {
@@ -559,24 +566,25 @@ function podiumIcon(index) {
 function renderReplayOverlay(actions) {
   replayRunning = true;
 
+  const replayTable = createEmptyReplayTable();
+  let lastReplayCard = null;
+
   const overlay = document.createElement("div");
   overlay.className = "replayOverlay";
 
   overlay.innerHTML = `
-    <div class="replayModal">
+    <div class="replayTableModal">
+      <button id="closeReplayBtn" class="modalExitBtn">Chiudi</button>
       <h2>Replay della mano</h2>
       <div id="replayStep" class="replayStep">Preparazione replay...</div>
-      <div id="replayCardBox" class="replayCardBox"></div>
-      <div class="replayControls">
-        <button id="closeReplayBtn">Chiudi</button>
-      </div>
+      <div id="replayTableBox" class="replayTableBox"></div>
     </div>
   `;
 
   document.body.appendChild(overlay);
 
   const step = document.getElementById("replayStep");
-  const cardBox = document.getElementById("replayCardBox");
+  const tableBox = document.getElementById("replayTableBox");
   const close = document.getElementById("closeReplayBtn");
 
   let index = 0;
@@ -588,12 +596,15 @@ function renderReplayOverlay(actions) {
     overlay.remove();
   };
 
+  function updateReplayTable() {
+    tableBox.innerHTML = renderReplayTableHtml(replayTable, lastReplayCard);
+  }
+
   function showNext() {
     if (stopped) return;
 
     if (index >= actions.length) {
       step.innerText = "Replay concluso";
-      cardBox.innerHTML = "";
       return;
     }
 
@@ -601,24 +612,59 @@ function renderReplayOverlay(actions) {
 
     if (action.type === "chooseSuit") {
       step.innerText = `${action.playerName} sceglie ${SUIT_LABELS[action.suit]}`;
-      cardBox.innerHTML = `<img class="replayCard" src="${cardImg({ suit: action.suit, rank: "5" })}" />`;
+      lastReplayCard = null;
     }
 
     if (action.type === "play") {
-      step.innerText = `${action.playerName} gioca`;
-      cardBox.innerHTML = `<img class="replayCard" src="${cardImg(action.card)}" />`;
+      replayTable[action.card.suit][action.card.rank] = action.card;
+      lastReplayCard = action.card;
+      step.innerText = `${action.playerName} gioca ${action.card.rank} ${SUIT_LABELS[action.card.suit]}`;
     }
 
     if (action.type === "pass") {
       step.innerText = `${action.playerName} passa`;
-      cardBox.innerHTML = `<div class="replayPass">Passo</div>`;
+      lastReplayCard = null;
     }
 
+    updateReplayTable();
     index += 1;
-    setTimeout(showNext, 950);
+    setTimeout(showNext, 850);
   }
 
-  setTimeout(showNext, 350);
+  updateReplayTable();
+  setTimeout(showNext, 450);
+}
+
+function createEmptyReplayTable() {
+  return {
+    CP: {},
+    DN: {},
+    SP: {},
+    BA: {}
+  };
+}
+
+function renderReplayTableHtml(replayTable, lastReplayCard) {
+  return `
+    <div class="replayGameTable">
+      ${SUITS.map(suit => `
+        <div class="replaySuitColumn">
+          <div class="replaySuitTitle">${SUIT_LABELS[suit]}</div>
+          <div class="replayFixedColumnGrid">
+            ${VERTICAL_SLOTS.map(rank => {
+              const card = replayTable[suit][rank];
+              const isLast = card && lastReplayCard && card.suit === lastReplayCard.suit && card.rank === lastReplayCard.rank;
+              return `
+                <div class="replayCardSlot ${rank === "5" ? "replayFiveSlot" : ""}">
+                  ${card ? `<img class="replayTableCard ${isLast ? "replayTableCardLast" : ""}" src="${cardImg(card)}" />` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function scheduleThinkingNotice() {

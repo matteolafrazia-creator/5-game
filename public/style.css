@@ -771,6 +771,135 @@ input, button {
 }
 
 
+.modalExitBtn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 6px 9px !important;
+  margin: 0 !important;
+  font-size: 12px;
+  min-width: auto !important;
+  border: none;
+  border-radius: 8px;
+  background: #ef5350 !important;
+  color: #fff !important;
+  cursor: pointer;
+}
+
+.readyList {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  margin: 8px 0 12px;
+  font-size: 13px;
+  text-align: left;
+}
+
+.replayTableModal {
+  position: relative;
+  background: #fff;
+  color: #111;
+  border-radius: 16px;
+  padding: 18px;
+  width: min(760px, 96vw);
+  height: min(88vh, 720px);
+  text-align: center;
+  animation: modalIn 0.25s ease-out both;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 8px;
+}
+
+.replayTableBox {
+  min-height: 0;
+}
+
+.replayGameTable {
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  background: #0f5132;
+  border-radius: 14px;
+  padding: 6px;
+}
+
+.replaySuitColumn {
+  min-height: 0;
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+  padding: 4px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+
+.replaySuitTitle {
+  color: #fff;
+  font-weight: bold;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.replayFixedColumnGrid {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(10, 1fr);
+  align-items: center;
+  justify-items: center;
+  height: 100%;
+}
+
+.replayCardSlot {
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.replayFiveSlot {
+  background: rgba(255, 213, 79, 0.12);
+  border-radius: 6px;
+}
+
+.replayTableCard {
+  max-height: 100%;
+  width: auto;
+  max-width: min(10vw, 62px);
+  display: block;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+}
+
+.replayTableCardLast {
+  animation: replayTableCardIn 0.35s ease-out both;
+  box-shadow: 0 0 14px rgba(255, 213, 79, 0.95), 0 4px 10px rgba(0,0,0,0.5);
+}
+
+@keyframes replayTableCardIn {
+  from {
+    opacity: 0;
+    transform: scale(1.2) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.replayFixedColumnGrid .replayCardSlot:nth-child(1) { z-index: 10; }
+.replayFixedColumnGrid .replayCardSlot:nth-child(2) { z-index: 9; }
+.replayFixedColumnGrid .replayCardSlot:nth-child(3) { z-index: 8; }
+.replayFixedColumnGrid .replayCardSlot:nth-child(4) { z-index: 7; }
+.replayFixedColumnGrid .replayCardSlot:nth-child(5) { z-index: 6; }
+.replayFixedColumnGrid .replayCardSlot:nth-child(6) { z-index: 5; }
+.replayFixedColumnGrid .replayCardSlot:nth-child(7) { z-index: 6; }
+.replayFixedColumnGrid .replayCardSlot:nth-child(8) { z-index: 7; }
+.replayFixedColumnGrid .replayCardSlot:nth-child(9) { z-index: 8; }
+.replayFixedColumnGrid .replayCardSlot:nth-child(10) { z-index: 9; }
+
+
 @media (max-width: 700px) {
   #app {
     padding: 4px;
@@ -891,6 +1020,38 @@ input, button {
   .thinkingToast {
     top: 16%;
     font-size: 13px;
+  }
+
+
+  .modalExitBtn {
+    top: 8px;
+    right: 8px;
+    font-size: 11px;
+    padding: 5px 7px !important;
+  }
+
+  .readyList {
+    grid-template-columns: 1fr;
+    font-size: 12px;
+  }
+
+  .replayTableModal {
+    width: 98vw;
+    height: 88vh;
+    padding: 12px;
+  }
+
+  .replayGameTable {
+    gap: 3px;
+    padding: 4px;
+  }
+
+  .replaySuitTitle {
+    font-size: 9px;
+  }
+
+  .replayTableCard {
+    max-width: min(10.5vw, 42px);
   }
 
 }
