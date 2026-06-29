@@ -5,62 +5,125 @@ let state = {};
 ws.onmessage = (msg) => {
   state = JSON.parse(msg.data);
 
-  document.getElementById("info").innerText =
-    "Giocatori: " + state.players;
-
-  document.getElementById("turnInfo").innerText =
-    state.yourTurn ? "👉 IL TUO TURNO" : "Attendi...";
-
+  renderTop();
   renderTable();
   renderHand();
-  renderPass();
+  renderActions();
 };
 
+function renderTop() {
+  document.getElementById("info").innerText =
+    "Giocatori: " + state.playersCount;
+
+  if (state.gameState === "WAITING") {
+    document.getElementById("turnInfo").innerText = "In attesa...";
+  }
+
+  if (state.gameState === "PICK_SUIT") {
+    document.getElementById("turnInfo").innerText = "Mazziere sceglie seme...";
+  }
+
+  if (state.gameState === "IN_GAME") {
+    document.getElementById("turnInfo").innerText =
+      state.yourTurn ? "👉 IL TUO TURNO" : "Attendi...";
+  }
+}
+
+/* =========================
+   TAVOLO
+========================= */
+
 function renderTable() {
-  const table = document.getElementById("table");
-  table.innerHTML = "";
+  const el = document.getElementById("table");
+  el.innerHTML = "";
 
-  Object.keys(state.table).forEach(suit => {
-    const div = document.createElement("div");
-    div.className = "suit";
+  if (!state.table) return;
 
-    div.innerHTML = "<b>" + suit + "</b>";
+  Object.keys(state.table).forEach(s => {
+    const box = document.createElement("div");
+    box.className = "suit";
+    box.innerHTML = "<b>" + s + "</b>";
 
-    state.table[suit].forEach(c => {
-      const el = document.createElement("div");
-      el.className = "card";
-      el.innerText = c.value + " " + c.suit;
-      div.appendChild(el);
+    state.table[s].forEach(c => {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerText = c.value + " " + c.suit;
+      box.appendChild(card);
     });
 
-    table.appendChild(div);
+    el.appendChild(box);
   });
 }
 
+/* =========================
+   MANO
+========================= */
+
 function renderHand() {
-  const hand = document.getElementById("hand");
-  hand.innerHTML = "";
+  const el = document.getElementById("hand");
+  el.innerHTML = "";
+
+  if (!state.hand) return;
 
   state.hand.forEach((c, i) => {
-    const el = document.createElement("div");
-    el.className = "card";
-    el.innerText = c.value + " " + c.suit;
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerText = c.value + " " + c.suit;
 
-    el.onclick = () => {
+    card.onclick = () => {
+      if (!state.yourTurn) return;
+
       ws.send(JSON.stringify({
         type: "play",
         index: i
       }));
     };
 
-    hand.appendChild(el);
+    el.appendChild(card);
   });
 }
 
-function renderPass() {
-  const btn = document.getElementById("passBtn");
+/* =========================
+   AZIONI
+========================= */
 
-  btn.onclick = () => {
-    ws.send(JSON.stringify({ type: "pass" }));
-  };
+function renderActions() {
+  const el = document.getElementById("actions");
+  el.innerHTML = "";
+
+  /* PICK SUIT */
+  if (state.gameState === "PICK_SUIT") {
+
+    if (state.dealer === 0) {
+      ["C","D","S","B"].forEach(s => {
+        const btn = document.createElement("button");
+        btn.innerText = "Scegli " + s;
+
+        btn.onclick = () => {
+          ws.send(JSON.stringify({
+            type: "chooseSuit",
+            suit: s
+          }));
+        };
+
+        el.appendChild(btn);
+      });
+    } else {
+      el.innerText = "Attesa mazziere...";
+    }
+  }
+
+  /* IN GAME */
+  if (state.gameState === "IN_GAME") {
+    const btn = document.createElement("button");
+    btn.innerText = "PASSO";
+
+    btn.onclick = () => {
+      if (!state.yourTurn) return;
+
+      ws.send(JSON.stringify({ type: "pass" }));
+    };
+
+    el.appendChild(btn);
+  }
 }
