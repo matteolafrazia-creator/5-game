@@ -39,7 +39,8 @@ function createRoom(code) {
     lastCard: null,
     handNumber: 1,
     handResult: null,
-    openingFiveRequired: false
+    openingFiveRequired: false,
+    currentHandActions: []
   };
 }
 
@@ -127,6 +128,7 @@ function startSetup(room) {
   room.handResult = null;
   room.lastCard = null;
   room.openingFiveRequired = false;
+  room.currentHandActions = [];
 
   room.players.forEach(p => {
     p.hand = [];
@@ -145,6 +147,7 @@ function dealAfterSuit(room, suit) {
   room.chosenSuit = suit;
   room.deck = createDeck();
   room.table = createEmptyTable();
+  room.currentHandActions = [];
 
   room.players.forEach(p => {
     p.hand = sortHand(room.deck.splice(0, 10));
@@ -160,6 +163,13 @@ function dealAfterSuit(room, suit) {
   room.openingFiveRequired = true;
 
   room.message = `${room.players[room.dealerIndex].name} ha scelto ${room.chosenSuit}. ${room.players[room.starterIndex].name} deve aprire giocando il 5.`;
+
+  room.currentHandActions.push({
+    type: "chooseSuit",
+    playerName: room.players[room.dealerIndex].name,
+    suit: room.chosenSuit
+  });
+
   broadcast(room);
 }
 
@@ -200,7 +210,8 @@ function finishHand(room, winner) {
     winnerName: winner.name,
     scores,
     showStandings: room.handNumber === 5 || room.handNumber === 10,
-    final: room.handNumber === 10
+    final: room.handNumber === 10,
+    replay: [...room.currentHandActions]
   };
 
   room.gameState = room.handNumber === 10 ? "GAME_OVER" : "HAND_OVER";
@@ -223,6 +234,12 @@ function playCard(room, playerIndex, cardIndex) {
   player.hand.splice(cardIndex, 1);
   player.hand = sortHand(player.hand);
   room.lastCard = { ...card, playerName: player.name };
+
+  room.currentHandActions.push({
+    type: "play",
+    playerName: player.name,
+    card: { ...card }
+  });
 
   if (room.openingFiveRequired) {
     room.openingFiveRequired = false;
@@ -269,6 +286,7 @@ function resetMatch(room) {
   room.starterIndex = null;
   room.turn = null;
   room.openingFiveRequired = false;
+  room.currentHandActions = [];
   room.gameState = "WAITING";
   room.table = createEmptyTable();
   room.message = "Nuova partita. In attesa giocatori...";
@@ -437,6 +455,11 @@ wss.on("connection", (ws) => {
       } else if (hasAnyMove(room, room.players[playerIndex])) {
         room.message = "Non puoi passare: hai almeno una mossa disponibile.";
       } else {
+        room.currentHandActions.push({
+          type: "pass",
+          playerName: room.players[playerIndex].name
+        });
+
         room.turn = (room.turn + 1) % room.players.length;
         room.message = `${room.players[playerIndex].name} passa. Turno di ${room.players[room.turn].name}.`;
       }
@@ -488,5 +511,5 @@ wss.on("connection", (ws) => {
 });
 
 server.listen(process.env.PORT || 10000, () => {
-  console.log("Gioco 5 reconnect fix online");
+  console.log("Gioco 5 v0.9.1-beta replay online");
 });

@@ -610,6 +610,167 @@ input, button {
 }
 
 
+.standingsList {
+  list-style: none;
+  padding-left: 0 !important;
+}
+
+.standingsList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+.championTitle {
+  margin-top: -4px;
+  color: #b8860b;
+}
+
+.endButtons {
+  margin-top: 12px;
+}
+
+.secondaryBtn {
+  background: rgba(0,0,0,0.12) !important;
+  color: #111 !important;
+}
+
+.finalVictoryModal {
+  position: relative;
+  overflow: hidden;
+}
+
+.finalVictoryModal::before,
+.finalVictoryModal::after {
+  content: "🎊 🎉 ✨";
+  position: absolute;
+  left: 0;
+  right: 0;
+  font-size: 22px;
+  animation: confettiFall 1.4s ease-out both;
+  pointer-events: none;
+}
+
+.finalVictoryModal::before {
+  top: -10px;
+}
+
+.finalVictoryModal::after {
+  bottom: -10px;
+  animation-delay: 0.15s;
+}
+
+@keyframes confettiFall {
+  from {
+    transform: translateY(-18px) scale(0.9);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(18px) scale(1);
+    opacity: 0.45;
+  }
+}
+
+.replayOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: rgba(0,0,0,0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.replayModal {
+  background: #fff;
+  color: #111;
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  animation: modalIn 0.25s ease-out both;
+}
+
+.replayStep {
+  min-height: 28px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.replayCardBox {
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.replayCard {
+  width: 86px;
+  border-radius: 8px;
+  animation: replayCardIn 0.35s ease-out both;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+}
+
+.replayPass {
+  background: #ffd54f;
+  color: #111;
+  border-radius: 14px;
+  padding: 18px 26px;
+  font-weight: bold;
+  animation: replayCardIn 0.35s ease-out both;
+}
+
+.replayControls button {
+  border: none;
+  border-radius: 10px;
+  background: #ffd54f;
+  color: #111;
+  cursor: pointer;
+  font-weight: bold;
+  padding: 10px 18px;
+}
+
+@keyframes replayCardIn {
+  from {
+    opacity: 0;
+    transform: scale(0.82) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.thinkingToast {
+  position: fixed;
+  z-index: 125;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.82);
+  color: #fff;
+  font-weight: bold;
+  padding: 12px 18px;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  animation: thinkingToastIn 2.2s ease-out both;
+}
+
+@keyframes thinkingToastIn {
+  0% { opacity: 0; transform: translate(-50%, -8px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}
+
+
 @media (max-width: 700px) {
   #app {
     padding: 4px;
@@ -716,6 +877,20 @@ input, button {
   .rulesModal p,
   .rulesModal li {
     font-size: 14px;
+  }
+
+
+  .replayCard {
+    width: 72px;
+  }
+
+  .replayCardBox {
+    min-height: 110px;
+  }
+
+  .thinkingToast {
+    top: 16%;
+    font-size: 13px;
   }
 
 }

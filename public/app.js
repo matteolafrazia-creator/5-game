@@ -4,6 +4,9 @@ const ws = new WebSocket(location.origin.replace("http", "ws"));
 let state = null;
 let joined = false;
 let errorMessage = "";
+let thinkingTimer = null;
+let activeThinkerName = null;
+let replayRunning = false;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
@@ -175,6 +178,7 @@ function render() {
   renderEndOverlay();
   renderAbortedOverlay();
   renderPassWarningOverlay();
+  scheduleThinkingNotice();
 }
 
 function renderHeader() {
@@ -428,6 +432,7 @@ function renderSuitOverlay() {
 
 function renderEndOverlay() {
   if (!["HAND_OVER", "GAME_OVER"].includes(state.gameState) || !state.handResult) return;
+  if (replayRunning) return;
 
   const overlay = document.createElement("div");
   overlay.className = "overlay";
@@ -437,29 +442,39 @@ function renderEndOverlay() {
     .join("");
 
   const standings = state.handResult.showStandings
-    ? `<h3>${state.handResult.final ? "Classifica finale" : "Classifica a metà partita"}</h3>
-       <ol>${state.standings.map(s => `<li>${s.name}: ${s.total} punti</li>`).join("")}</ol>`
+    ? `<h3>${state.handResult.final ? "🏁 Classifica finale" : "⏱️ Classifica parziale dopo 5 mani"}</h3>
+       <ol class="standingsList">${state.standings.map((s, index) => `<li><span>${podiumIcon(index)} ${s.name}</span><strong>${s.total} pt</strong></li>`).join("")}</ol>`
     : "";
 
   const readyCount = state.players.filter(p => p.readyNext).length;
   const meReady = state.players[state.yourIndex]?.readyNext;
+  const replayAvailable = state.handResult.replay && state.handResult.replay.length > 0;
 
   overlay.innerHTML = `
-    <div class="modal victoryModal">
-      <div class="trophy">🏆</div>
-      <h1>Ha vinto ${state.handResult.winnerName}</h1>
+    <div class="modal victoryModal ${state.gameState === "GAME_OVER" ? "finalVictoryModal" : ""}">
+      <div class="trophy">${state.gameState === "GAME_OVER" ? "🎉" : "🏆"}</div>
+      <h1>${state.gameState === "GAME_OVER" ? "Partita conclusa" : "Ha vinto " + state.handResult.winnerName}</h1>
+      ${state.gameState === "GAME_OVER" ? `<h2 class="championTitle">Campione: ${state.standings[0]?.name || ""}</h2>` : ""}
       <h3>Punteggi mano</h3>
       <ul>${scores}</ul>
       ${standings}
-      ${
-        state.gameState === "HAND_OVER"
-          ? `<p>${readyCount}/4 giocatori pronti</p><button id="readyNextBtn">${meReady ? "In attesa degli altri..." : "Pronto"}</button>`
-          : '<button id="resetMatchBtn">Nuova partita</button>'
-      }
+      <div class="endButtons">
+        ${replayAvailable ? '<button id="watchReplayBtn" class="secondaryBtn">Rivedi la mano</button>' : ""}
+        ${
+          state.gameState === "HAND_OVER"
+            ? `<p>${readyCount}/4 giocatori pronti</p><button id="readyNextBtn">${meReady ? "In attesa degli altri..." : "Pronto"}</button>`
+            : '<button id="resetMatchBtn">Nuova partita</button>'
+        }
+      </div>
     </div>
   `;
 
   app.appendChild(overlay);
+
+  const replay = document.getElementById("watchReplayBtn");
+  if (replay) {
+    replay.onclick = () => renderReplayOverlay(state.handResult.replay);
+  }
 
   const ready = document.getElementById("readyNextBtn");
 
@@ -479,7 +494,7 @@ function renderEndOverlay() {
   }
 }
 
-function renderAbortedOverlay() {
+function renderAbortedOverlayfunction renderAbortedOverlay() {
   if (state.gameState !== "ABORTED") return;
 
   const overlay = document.createElement("div");
@@ -530,6 +545,127 @@ function renderPassWarningOverlay() {
   document.getElementById("closePassWarningBtn").onclick = () => {
     overlay.remove();
   };
+}
+
+
+
+function podiumIcon(index) {
+  if (index === 0) return "🥇";
+  if (index === 1) return "🥈";
+  if (index === 2) return "🥉";
+  return "4°";
+}
+
+function renderReplayOverlay(actions) {
+  replayRunning = true;
+
+  const overlay = document.createElement("div");
+  overlay.className = "replayOverlay";
+
+  overlay.innerHTML = `
+    <div class="replayModal">
+      <h2>Replay della mano</h2>
+      <div id="replayStep" class="replayStep">Preparazione replay...</div>
+      <div id="replayCardBox" class="replayCardBox"></div>
+      <div class="replayControls">
+        <button id="closeReplayBtn">Chiudi</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const step = document.getElementById("replayStep");
+  const cardBox = document.getElementById("replayCardBox");
+  const close = document.getElementById("closeReplayBtn");
+
+  let index = 0;
+  let stopped = false;
+
+  close.onclick = () => {
+    stopped = true;
+    replayRunning = false;
+    overlay.remove();
+  };
+
+  function showNext() {
+    if (stopped) return;
+
+    if (index >= actions.length) {
+      step.innerText = "Replay concluso";
+      cardBox.innerHTML = "";
+      return;
+    }
+
+    const action = actions[index];
+
+    if (action.type === "chooseSuit") {
+      step.innerText = `${action.playerName} sceglie ${SUIT_LABELS[action.suit]}`;
+      cardBox.innerHTML = `<img class="replayCard" src="${cardImg({ suit: action.suit, rank: "5" })}" />`;
+    }
+
+    if (action.type === "play") {
+      step.innerText = `${action.playerName} gioca`;
+      cardBox.innerHTML = `<img class="replayCard" src="${cardImg(action.card)}" />`;
+    }
+
+    if (action.type === "pass") {
+      step.innerText = `${action.playerName} passa`;
+      cardBox.innerHTML = `<div class="replayPass">Passo</div>`;
+    }
+
+    index += 1;
+    setTimeout(showNext, 950);
+  }
+
+  setTimeout(showNext, 350);
+}
+
+function scheduleThinkingNotice() {
+  if (!state || state.gameState !== "IN_GAME") {
+    clearThinkingNotice();
+    return;
+  }
+
+  const thinker = state.players[state.turn]?.name;
+  if (!thinker) {
+    clearThinkingNotice();
+    return;
+  }
+
+  if (activeThinkerName === thinker && thinkingTimer) return;
+
+  clearThinkingNotice();
+  activeThinkerName = thinker;
+
+  thinkingTimer = setTimeout(() => {
+    if (!state || state.gameState !== "IN_GAME") return;
+    if (state.players[state.turn]?.name !== thinker) return;
+    showThinkingToast(`${thinker} sta pensando...`);
+  }, 15000);
+}
+
+function clearThinkingNotice() {
+  if (thinkingTimer) {
+    clearTimeout(thinkingTimer);
+    thinkingTimer = null;
+  }
+  activeThinkerName = null;
+}
+
+function showThinkingToast(text) {
+  const existing = document.querySelector(".thinkingToast");
+  if (existing) existing.remove();
+
+  const toast = document.createElement("div");
+  toast.className = "thinkingToast";
+  toast.innerText = text;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 2200);
 }
 
 
