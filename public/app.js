@@ -88,7 +88,7 @@ function renderStart() {
         <button id="joinBtn">Entra in partita</button>
       </div>
 
-      <div class="betaLabel">Beta 0.9</div>
+      <div class="betaLabel">Beta 0.9.0</div>
     </div>
   `;
 
@@ -163,7 +163,11 @@ function renderHeader() {
   div.innerHTML = `
     <button id="topExitBtn" class="topExitBtn">Esci</button>
     <h2>5 · Mano ${state.handNumber || 1}/10</h2>
-    <div class="roomCode">Codice: <strong>${state.roomCode}</strong></div>
+    <div class="roomCode">
+      Codice: <strong>${state.roomCode}</strong>
+      <button id="copyCodeBtn" class="miniBtn">Copia</button>
+      <button id="shareCodeBtn" class="miniBtn">Condividi</button>
+    </div>
     <div>${status}</div>
     <div class="message">${state.message || ""}</div>
     <div>${state.chosenSuit ? "Seme scelto: " + SUIT_LABELS[state.chosenSuit] : ""}</div>
@@ -177,6 +181,38 @@ function renderHeader() {
       clearSession();
     }
   };
+
+  document.getElementById("copyCodeBtn").onclick = async () => {
+    await copyRoomCode();
+  };
+
+  document.getElementById("shareCodeBtn").onclick = async () => {
+    await shareRoomCode();
+  };
+}
+
+async function copyRoomCode() {
+  const text = state.roomCode;
+  try {
+    await navigator.clipboard.writeText(text);
+    showSmallToast("Codice copiato");
+  } catch {
+    showSmallToast("Codice: " + text);
+  }
+}
+
+async function shareRoomCode() {
+  const text = `Vieni a giocare a 5! Codice partita: ${state.roomCode}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "5", text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      showSmallToast("Invito copiato");
+    }
+  } catch {
+    showSmallToast("Invito non condiviso");
+  }
 }
 
 function renderPlayers() {
@@ -187,7 +223,10 @@ function renderPlayers() {
     const el = document.createElement("div");
     el.className = "player";
     if (i === state.turn && state.gameState === "IN_GAME") el.classList.add("active");
-    el.innerText = `${p.name} · ${p.cards} carte · ${p.totalScore || 0} pt ${p.connected ? "" : "(offline)"}`;
+
+    const ready = state.gameState === "HAND_OVER" ? (p.readyNext ? " · pronto" : " · attesa") : "";
+    el.innerText = `${p.name} · ${p.cards} carte · ${p.totalScore || 0} pt${ready} ${p.connected ? "" : "(offline)"}`;
+
     div.appendChild(el);
   });
 
@@ -365,20 +404,30 @@ function renderEndOverlay() {
        <ol>${state.standings.map(s => `<li>${s.name}: ${s.total} punti</li>`).join("")}</ol>`
     : "";
 
+  const readyCount = state.players.filter(p => p.readyNext).length;
+  const meReady = state.players[state.yourIndex]?.readyNext;
+
   overlay.innerHTML = `
     <div class="modal">
       <h1>Ha vinto ${state.handResult.winnerName}</h1>
       <h3>Punteggi mano</h3>
       <ul>${scores}</ul>
       ${standings}
-      ${state.gameState === "HAND_OVER" ? '<button id="nextHandBtn">Prossima mano</button>' : '<button id="resetMatchBtn">Nuova partita</button>'}
+      ${
+        state.gameState === "HAND_OVER"
+          ? `<p>${readyCount}/4 giocatori pronti</p><button id="readyNextBtn">${meReady ? "In attesa degli altri..." : "Pronto"}</button>`
+          : '<button id="resetMatchBtn">Nuova partita</button>'
+      }
     </div>
   `;
 
   app.appendChild(overlay);
 
-  const next = document.getElementById("nextHandBtn");
-  if (next) next.onclick = () => ws.send(JSON.stringify({ type: "nextHand" }));
+  const ready = document.getElementById("readyNextBtn");
+  if (ready) {
+    ready.disabled = !!meReady;
+    ready.onclick = () => ws.send(JSON.stringify({ type: "readyNext" }));
+  }
 
   const reset = document.getElementById("resetMatchBtn");
   if (reset) reset.onclick = () => ws.send(JSON.stringify({ type: "resetMatch" }));
@@ -414,4 +463,12 @@ function showTurnToast() {
   toast.innerText = "È il tuo turno";
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 1600);
+}
+
+function showSmallToast(text) {
+  const toast = document.createElement("div");
+  toast.className = "smallToast";
+  toast.innerText = text;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 1400);
 }

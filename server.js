@@ -48,9 +48,7 @@ function generateRoomCode() {
   let code = "";
   do {
     code = "";
-    for (let i = 0; i < 6; i++) {
-      code += chars[Math.floor(Math.random() * chars.length)];
-    }
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
   } while (rooms.has(code));
   return code;
 }
@@ -96,7 +94,8 @@ function broadcast(room) {
         name: x.name,
         cards: x.hand.length,
         connected: x.connected,
-        totalScore: x.totalScore || 0
+        totalScore: x.totalScore || 0,
+        readyNext: !!x.readyNext
       })),
       yourIndex: i,
       yourId: p.id,
@@ -128,16 +127,18 @@ function startSetup(room) {
   room.handResult = null;
   room.lastCard = null;
   room.openingFiveRequired = false;
-  room.players.forEach(p => p.hand = []);
+
+  room.players.forEach(p => {
+    p.hand = [];
+    p.readyNext = false;
+  });
 
   room.message = `Mano ${room.handNumber}/10. ${room.players[room.dealerIndex].name} deve scegliere il seme.`;
   broadcast(room);
 }
 
 function tryStart(room) {
-  if (room.gameState === "WAITING" && room.players.length === 4) {
-    startSetup(room);
-  }
+  if (room.gameState === "WAITING" && room.players.length === 4) startSetup(room);
 }
 
 function dealAfterSuit(room, suit) {
@@ -147,6 +148,7 @@ function dealAfterSuit(room, suit) {
 
   room.players.forEach(p => {
     p.hand = sortHand(room.deck.splice(0, 10));
+    p.readyNext = false;
   });
 
   room.starterIndex = room.players.findIndex(p =>
@@ -158,14 +160,11 @@ function dealAfterSuit(room, suit) {
   room.openingFiveRequired = true;
 
   room.message = `${room.players[room.dealerIndex].name} ha scelto ${room.chosenSuit}. ${room.players[room.starterIndex].name} deve aprire giocando il 5.`;
-
   broadcast(room);
 }
 
 function canPlay(room, card) {
-  if (room.openingFiveRequired) {
-    return card.suit === room.chosenSuit && card.rank === "5";
-  }
+  if (room.openingFiveRequired) return card.suit === room.chosenSuit && card.rank === "5";
 
   const col = room.table[card.suit];
   const value = RANK_VALUE[card.rank];
@@ -193,6 +192,7 @@ function finishHand(room, winner) {
   const scores = room.players.map(p => {
     const points = p === winner ? 0 : p.hand.length;
     p.totalScore = (p.totalScore || 0) + points;
+    p.readyNext = false;
     return { name: p.name, points };
   });
 
@@ -240,16 +240,27 @@ function playCard(room, playerIndex, cardIndex) {
   room.message = `${player.name} ha giocato. Turno di ${room.players[room.turn].name}.`;
 }
 
-function nextHand(room) {
+function markReady(room, playerIndex) {
   if (room.gameState !== "HAND_OVER") return;
-  room.handNumber += 1;
-  startSetup(room);
+
+  room.players[playerIndex].readyNext = true;
+
+  const readyCount = room.players.filter(p => p.readyNext).length;
+  room.message = `${readyCount}/4 giocatori pronti per la prossima mano.`;
+
+  if (readyCount === 4) {
+    room.handNumber += 1;
+    startSetup(room);
+  } else {
+    broadcast(room);
+  }
 }
 
 function resetMatch(room) {
   room.players.forEach(p => {
     p.hand = [];
     p.totalScore = 0;
+    p.readyNext = false;
   });
 
   room.handNumber = 1;
@@ -309,6 +320,7 @@ function joinRoom(ws, room, data) {
     hand: [],
     connected: true,
     totalScore: 0,
+    readyNext: false,
     reconnectTimer: null
   };
 
@@ -419,7 +431,7 @@ wss.on("connection", (ws) => {
       broadcast(room);
     }
 
-    if (data.type === "nextHand") nextHand(room);
+    if (data.type === "readyNext") markReady(room, playerIndex);
     if (data.type === "resetMatch") resetMatch(room);
   });
 
@@ -444,5 +456,5 @@ wss.on("connection", (ws) => {
 });
 
 server.listen(process.env.PORT || 10000, () => {
-  console.log("Gioco 5 v0.9.0-beta.1 online");
+  console.log("Gioco 5 v0.9.0-beta.2 online");
 });
