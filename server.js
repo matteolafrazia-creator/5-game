@@ -13,7 +13,7 @@ const RANKS = ["A", "2", "3", "4", "5", "6", "7", "F", "C", "R"];
 const RANK_VALUE = { A: 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, F: 8, C: 9, R: 10 };
 
 let players = [];
-let gameState = "WAITING"; // WAITING | PICK_SUIT | IN_GAME | HAND_OVER | GAME_OVER
+let gameState = "WAITING";
 let dealerIndex = null;
 let chosenSuit = null;
 let starterIndex = null;
@@ -24,6 +24,7 @@ let message = "In attesa giocatori...";
 let lastCard = null;
 let handNumber = 1;
 let handResult = null;
+let openingFiveRequired = false;
 
 function createEmptyTable() {
   return {
@@ -83,7 +84,7 @@ function broadcast() {
       message,
       lastCard,
       handResult,
-      standings: standings()
+      standings
     }));
   });
 }
@@ -97,6 +98,7 @@ function startSetup() {
   table = createEmptyTable();
   handResult = null;
   lastCard = null;
+  openingFiveRequired = false;
   players.forEach(p => p.hand = []);
   message = `Mano ${handNumber}/10. ${players[dealerIndex].name} deve scegliere il seme.`;
   broadcast();
@@ -119,21 +121,20 @@ function dealAfterSuit(suit) {
     p.hand.some(c => c.suit === chosenSuit && c.rank === "5")
   );
 
-  const starter = players[starterIndex];
-  const fiveIndex = starter.hand.findIndex(c => c.suit === chosenSuit && c.rank === "5");
-  const five = starter.hand.splice(fiveIndex, 1)[0];
-
-  table[chosenSuit].five = five;
-  lastCard = { ...five, playerName: starter.name };
-
-  turn = (starterIndex + 1) % players.length;
+  turn = starterIndex;
   gameState = "IN_GAME";
-  message = `${players[dealerIndex].name} ha scelto ${chosenSuit}. ${starter.name} apre con il 5. Turno di ${players[turn].name}.`;
+  openingFiveRequired = true;
+
+  message = `${players[dealerIndex].name} ha scelto ${chosenSuit}. ${players[starterIndex].name} deve aprire giocando il 5.`;
 
   broadcast();
 }
 
 function canPlay(card) {
+  if (openingFiveRequired) {
+    return card.suit === chosenSuit && card.rank === "5";
+  }
+
   const col = table[card.suit];
   const value = RANK_VALUE[card.rank];
 
@@ -190,6 +191,13 @@ function playCard(playerIndex, cardIndex) {
   player.hand = sortHand(player.hand);
   lastCard = { ...card, playerName: player.name };
 
+  if (openingFiveRequired) {
+    openingFiveRequired = false;
+    turn = (playerIndex + 1) % players.length;
+    message = `${player.name} apre con il 5. Turno di ${players[turn].name}.`;
+    return;
+  }
+
   if (player.hand.length === 0) {
     finishHand(player);
     return;
@@ -212,6 +220,10 @@ function resetMatch() {
   });
   handNumber = 1;
   dealerIndex = null;
+  chosenSuit = null;
+  starterIndex = null;
+  turn = null;
+  openingFiveRequired = false;
   gameState = "WAITING";
   table = createEmptyTable();
   message = "Nuova partita. In attesa giocatori...";
@@ -282,22 +294,20 @@ wss.on("connection", (ws) => {
       if (gameState !== "IN_GAME") return;
       if (i !== turn) return;
 
-      if (hasAnyMove(players[i])) {
+      if (openingFiveRequired) {
+        message = "Non puoi passare: devi giocare il 5 del seme scelto.";
+      } else if (hasAnyMove(players[i])) {
         message = "Non puoi passare: hai almeno una mossa disponibile.";
       } else {
         turn = (turn + 1) % players.length;
         message = `${players[i].name} passa. Turno di ${players[turn].name}.`;
       }
+
       broadcast();
     }
 
-    if (data.type === "nextHand") {
-      nextHand();
-    }
-
-    if (data.type === "resetMatch") {
-      resetMatch();
-    }
+    if (data.type === "nextHand") nextHand();
+    if (data.type === "resetMatch") resetMatch();
   });
 
   ws.on("close", () => {
