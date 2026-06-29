@@ -13,20 +13,23 @@ ws.onmessage = (msg) => {
 
 function renderTop() {
   document.getElementById("info").innerText =
-    "Giocatori: " + state.playersCount;
+    `Giocatori: ${state.playersCount}/4`;
+
+  let text = "";
 
   if (state.gameState === "WAITING") {
-    document.getElementById("turnInfo").innerText = "In attesa...";
+    text = "In attesa giocatori...";
   }
 
   if (state.gameState === "PICK_SUIT") {
-    document.getElementById("turnInfo").innerText = "Mazziere sceglie seme...";
+    text = "Il mazziere sta scegliendo il seme...";
   }
 
   if (state.gameState === "IN_GAME") {
-    document.getElementById("turnInfo").innerText =
-      state.yourTurn ? "👉 IL TUO TURNO" : "Attendi...";
+    text = state.yourTurn ? "👉 IL TUO TURNO" : "Attendi...";
   }
+
+  document.getElementById("turnInfo").innerText = text;
 }
 
 /* =========================
@@ -39,15 +42,16 @@ function renderTable() {
 
   if (!state.table) return;
 
-  Object.keys(state.table).forEach(s => {
+  Object.keys(state.table).forEach(suit => {
     const box = document.createElement("div");
     box.className = "suit";
-    box.innerHTML = "<b>" + s + "</b>";
 
-    state.table[s].forEach(c => {
+    box.innerHTML = `<b>${suit}</b>`;
+
+    state.table[suit].forEach(c => {
       const card = document.createElement("div");
       card.className = "card";
-      card.innerText = c.value + " " + c.suit;
+      card.innerText = `${c.value} ${c.suit}`;
       box.appendChild(card);
     });
 
@@ -68,7 +72,7 @@ function renderHand() {
   state.hand.forEach((c, i) => {
     const card = document.createElement("div");
     card.className = "card";
-    card.innerText = c.value + " " + c.suit;
+    card.innerText = `${c.value} ${c.suit}`;
 
     card.onclick = () => {
       if (!state.yourTurn) return;
@@ -91,13 +95,17 @@ function renderActions() {
   const el = document.getElementById("actions");
   el.innerHTML = "";
 
-  /* PICK SUIT */
+  /* =========================
+     PICK SUIT FIX (MAZZIERE)
+  ========================= */
+
   if (state.gameState === "PICK_SUIT") {
 
-    if (state.dealer === 0) {
-      ["C","D","S","B"].forEach(s => {
+    // ❗ FIX VERO: confronta INDEX, non "0"
+    if (state.dealer === state.yourIndex) {
+      ["C", "D", "S", "B"].forEach(s => {
         const btn = document.createElement("button");
-        btn.innerText = "Scegli " + s;
+        btn.innerText = `Scegli ${s}`;
 
         btn.onclick = () => {
           ws.send(JSON.stringify({
@@ -109,11 +117,14 @@ function renderActions() {
         el.appendChild(btn);
       });
     } else {
-      el.innerText = "Attesa mazziere...";
+      el.innerText = "Attesa scelta mazziere...";
     }
   }
 
-  /* IN GAME */
+  /* =========================
+     IN GAME
+  ========================= */
+
   if (state.gameState === "IN_GAME") {
     const btn = document.createElement("button");
     btn.innerText = "PASSO";

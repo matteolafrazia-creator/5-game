@@ -11,11 +11,11 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 /* =========================
-   STATO BASE
+   STATO
 ========================= */
 
 let players = [];
-let gameState = "WAITING"; // WAITING | PICK_SUIT | IN_GAME
+let gameState = "WAITING";
 
 let deck = [];
 let table = { C: [], D: [], S: [], B: [] };
@@ -27,7 +27,7 @@ let chosenSuit = null;
 const RECONNECT_TIME = 60000;
 
 /* =========================
-   DECK
+   UTILS
 ========================= */
 
 function createDeck() {
@@ -40,12 +40,15 @@ function createDeck() {
       d.push({ suit: s, value: v });
     }
   }
-
   return d.sort(() => Math.random() - 0.5);
 }
 
 function findPlayer(ws) {
   return players.find(p => p.ws === ws);
+}
+
+function valueOrder(v) {
+  return ["A","2","3","4","5","6","7","F","H","R"].indexOf(v);
 }
 
 /* =========================
@@ -64,7 +67,7 @@ function startGameSetup() {
 
   gameState = "PICK_SUIT";
 
-  console.log("➡️ PICK_SUIT");
+  console.log("GAME -> PICK_SUIT");
 }
 
 /* =========================
@@ -79,7 +82,7 @@ function tryStart() {
 }
 
 /* =========================
-   VALID MOVE
+   REGOLE
 ========================= */
 
 function isValidMove(card, suit) {
@@ -89,18 +92,12 @@ function isValidMove(card, suit) {
 
   const top = table[suit][table[suit].length - 1];
 
-  const order = ["A","2","3","4","5","6","7","F","H","R"];
-
-  return Math.abs(order.indexOf(card.value) - order.indexOf(top.value)) === 1;
+  return Math.abs(valueOrder(card.value) - valueOrder(top.value)) === 1;
 }
-
-/* =========================
-   START PLAYER
-========================= */
 
 function findStartingPlayer() {
   for (let i = 0; i < players.length; i++) {
-    if (players[i].hand?.some(c => c.value === "5" && c.suit === chosenSuit)) {
+    if (players[i].hand.some(c => c.value === "5" && c.suit === chosenSuit)) {
       return i;
     }
   }
@@ -108,7 +105,7 @@ function findStartingPlayer() {
 }
 
 /* =========================
-   BROADCAST
+   BROADCAST (QUI ERA IL BUG)
 ========================= */
 
 function broadcast() {
@@ -119,12 +116,13 @@ function broadcast() {
       type: "state",
       gameState,
       playersCount: players.length,
-      hand: p.hand || [],
+      hand: p.hand,
       table,
       turn,
       yourTurn: gameState === "IN_GAME" && turn === i,
       dealer: dealerIndex,
-      chosenSuit
+      chosenSuit,
+      yourIndex: i   // 🔥 FIX IMPORTANTE
     }));
   });
 }
@@ -147,8 +145,6 @@ wss.on("connection", (ws) => {
     players.push(player);
   } else {
     player.ws = ws;
-    player.status = "CONNECTED";
-    if (player.disconnectTimer) clearTimeout(player.disconnectTimer);
   }
 
   tryStart();
@@ -185,7 +181,7 @@ wss.on("connection", (ws) => {
     }
 
     /* =========================
-       GIOCA
+       PLAY
     ========================= */
 
     if (data.type === "play") {
@@ -206,7 +202,7 @@ wss.on("connection", (ws) => {
     }
 
     /* =========================
-       PASSO
+       PASS
     ========================= */
 
     if (data.type === "pass") {
@@ -219,10 +215,6 @@ wss.on("connection", (ws) => {
     }
   });
 
-  /* =========================
-     DISCONNESSIONE
-  ========================= */
-
   ws.on("close", () => {
     const p = findPlayer(ws);
     if (!p) return;
@@ -231,13 +223,11 @@ wss.on("connection", (ws) => {
 
     p.disconnectTimer = setTimeout(() => {
       const idx = players.indexOf(p);
-
       if (idx !== -1 && p.status === "DISCONNECTED") {
         players.splice(idx, 1);
 
         if (players.length < 4) {
           gameState = "WAITING";
-          turn = null;
         }
       }
     }, RECONNECT_TIME);
