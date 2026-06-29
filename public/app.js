@@ -494,7 +494,7 @@ function renderEndOverlay() {
   }
 }
 
-function renderAbortedOverlayfunction renderAbortedOverlay() {
+function renderAbortedOverlay() {
   if (state.gameState !== "ABORTED") return;
 
   const overlay = document.createElement("div");

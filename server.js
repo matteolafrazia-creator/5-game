@@ -163,13 +163,6 @@ function dealAfterSuit(room, suit) {
   room.openingFiveRequired = true;
 
   room.message = `${room.players[room.dealerIndex].name} ha scelto ${room.chosenSuit}. ${room.players[room.starterIndex].name} deve aprire giocando il 5.`;
-
-  room.currentHandActions.push({
-    type: "chooseSuit",
-    playerName: room.players[room.dealerIndex].name,
-    suit: room.chosenSuit
-  });
-
   broadcast(room);
 }
 
@@ -511,5 +504,5 @@ wss.on("connection", (ws) => {
 });
 
 server.listen(process.env.PORT || 10000, () => {
-  console.log("Gioco 5 v0.9.1-beta replay online");
+  console.log("Gioco 5 v0.9.1-beta replay fixed online");
 });
