@@ -103,6 +103,8 @@ input, button {
   padding: 4px;
   text-align: center;
   overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr;
 }
 
 .suitTitle {
@@ -111,23 +113,33 @@ input, button {
   margin-bottom: 2px;
 }
 
-.tableCardRail {
-  height: calc(100% - 18px);
+.fixedColumnGrid {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(10, 1fr);
+  align-items: center;
+  justify-items: center;
+  height: 100%;
+}
+
+.cardSlot {
+  min-height: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
 }
 
-.tableCard {
-  width: clamp(30px, 9vw, 58px);
-  display: block;
-  border-radius: 4px;
-  margin-top: clamp(-24px, -3.4vh, -8px);
+.fiveSlot {
+  background: rgba(255, 213, 79, 0.12);
+  border-radius: 6px;
 }
 
-.tableCard:first-child {
-  margin-top: 0;
+.tableCard {
+  max-height: 100%;
+  width: auto;
+  max-width: min(10vw, 58px);
+  display: block;
+  border-radius: 4px;
 }
 
 .completedSuit {
@@ -172,8 +184,16 @@ input, button {
   gap: clamp(2px, 1vw, 8px);
   padding: 5px;
   background: rgba(0,0,0,0.72);
+  border: 2px solid transparent;
   border-radius: 10px;
   overflow: hidden;
+  transition: border 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.handActive {
+  border: 2px solid #ffd54f;
+  box-shadow: 0 0 18px rgba(255, 213, 79, 0.85);
+  background: rgba(255, 213, 79, 0.18);
 }
 
 .handCard {
@@ -278,7 +298,6 @@ input, button {
 
 @media (max-width: 700px) {
   #app {
-    grid-template-rows: auto auto auto 1fr auto auto;
     padding: 4px;
     gap: 3px;
   }
@@ -323,8 +342,7 @@ input, button {
   }
 
   .tableCard {
-    width: min(10.5vw, 42px);
-    margin-top: clamp(-21px, -3.2vh, -7px);
+    max-width: min(10.5vw, 42px);
   }
 
   .hand {

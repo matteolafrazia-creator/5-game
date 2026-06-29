@@ -6,7 +6,8 @@ let joined = false;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
-const RANK_ORDER = ["R", "C", "F", "7", "6", "5", "4", "3", "2", "A"];
+
+const VERTICAL_SLOTS = ["R", "C", "F", "7", "6", "5", "4", "3", "2", "A"];
 
 ws.onopen = () => {
   const savedId = localStorage.getItem("five_player_id");
@@ -129,14 +130,19 @@ function renderTable() {
     title.innerText = SUIT_LABELS[suit];
     col.appendChild(title);
 
-    const cards = getColumnCards(suit);
+    const cardsByRank = getCardsByRank(suit);
+    const isComplete = Object.keys(cardsByRank).length === 10;
 
-    if (cards.length === 10) {
+    if (isComplete) {
       col.classList.add("completedSuit");
+
       const stack = document.createElement("div");
       stack.className = "completedStack";
 
-      cards.slice(0, 5).forEach((card, idx) => {
+      VERTICAL_SLOTS.slice(0, 5).forEach((rank, idx) => {
+        const card = cardsByRank[rank];
+        if (!card) return;
+
         const img = document.createElement("img");
         img.className = "stackCard";
         img.src = cardImg(card);
@@ -147,20 +153,29 @@ function renderTable() {
       const label = document.createElement("div");
       label.className = "completedLabel";
       label.innerText = "Completo";
+
       col.appendChild(stack);
       col.appendChild(label);
     } else {
-      const cardRail = document.createElement("div");
-      cardRail.className = "tableCardRail";
+      const grid = document.createElement("div");
+      grid.className = "fixedColumnGrid";
 
-      cards.forEach(card => {
-        const img = document.createElement("img");
-        img.className = "tableCard";
-        img.src = cardImg(card);
-        cardRail.appendChild(img);
+      VERTICAL_SLOTS.forEach(rank => {
+        const slot = document.createElement("div");
+        slot.className = rank === "5" ? "cardSlot fiveSlot" : "cardSlot";
+
+        const card = cardsByRank[rank];
+        if (card) {
+          const img = document.createElement("img");
+          img.className = "tableCard";
+          img.src = cardImg(card);
+          slot.appendChild(img);
+        }
+
+        grid.appendChild(slot);
       });
 
-      col.appendChild(cardRail);
+      col.appendChild(grid);
     }
 
     table.appendChild(col);
@@ -169,30 +184,32 @@ function renderTable() {
   app.appendChild(table);
 }
 
-function getColumnCards(suit) {
+function getCardsByRank(suit) {
   const col = state.table?.[suit];
-  if (!col) return [];
-  const up = [...col.up].sort((a, b) => rankSortDesc(a.rank, b.rank));
-  const down = [...col.down].sort((a, b) => rankSortDesc(a.rank, b.rank));
-  return [...up, ...(col.five ? [col.five] : []), ...down];
-}
+  const map = {};
+  if (!col) return map;
 
-function rankSortDesc(a, b) {
-  return RANK_ORDER.indexOf(a) - RANK_ORDER.indexOf(b);
+  col.up?.forEach(card => map[card.rank] = card);
+  if (col.five) map["5"] = col.five;
+  col.down?.forEach(card => map[card.rank] = card);
+
+  return map;
 }
 
 function renderHand() {
   const wrap = document.createElement("div");
-  wrap.className = "hand";
+  wrap.className = state.yourTurn ? "hand handActive" : "hand";
 
   state.hand?.forEach((card, index) => {
     const img = document.createElement("img");
     img.className = "handCard";
     img.src = cardImg(card);
+
     img.onclick = () => {
       if (!state.yourTurn) return;
       ws.send(JSON.stringify({ type: "play", index }));
     };
+
     wrap.appendChild(img);
   });
 
@@ -255,6 +272,7 @@ function renderEndOverlay() {
   overlay.className = "overlay";
 
   const scores = state.handResult.scores.map(s => `<li>${s.name}: ${s.points} punti</li>`).join("");
+
   const standings = state.handResult.showStandings
     ? `<h3>${state.handResult.final ? "Classifica finale" : "Classifica a metà partita"}</h3>
        <ol>${state.standings.map(s => `<li>${s.name}: ${s.total} punti</li>`).join("")}</ol>`
