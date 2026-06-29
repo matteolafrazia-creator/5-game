@@ -83,6 +83,14 @@ function cardImg(card) {
   return `cards/${card.suit}_${card.rank}.png`;
 }
 
+function isLastPlayed(card) {
+  return (
+    state.lastCard &&
+    card.suit === state.lastCard.suit &&
+    card.rank === state.lastCard.rank
+  );
+}
+
 function renderStart() {
   const savedName = localStorage.getItem("five_player_name") || "";
 
@@ -302,9 +310,10 @@ function renderTable() {
         slot.className = rank === "5" ? "cardSlot fiveSlot" : "cardSlot";
 
         const card = cardsByRank[rank];
+
         if (card) {
           const img = document.createElement("img");
-          img.className = "tableCard";
+          img.className = isLastPlayed(card) ? "tableCard tableCardPlayed" : "tableCard";
           img.src = cardImg(card);
           slot.appendChild(img);
         }
@@ -429,7 +438,8 @@ function renderEndOverlay() {
   const meReady = state.players[state.yourIndex]?.readyNext;
 
   overlay.innerHTML = `
-    <div class="modal">
+    <div class="modal victoryModal">
+      <div class="trophy">🏆</div>
       <h1>Ha vinto ${state.handResult.winnerName}</h1>
       <h3>Punteggi mano</h3>
       <ul>${scores}</ul>
