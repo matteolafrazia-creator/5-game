@@ -5,13 +5,7 @@ let state = null;
 let joined = false;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
-const SUIT_LABELS = {
-  CP: "Coppe",
-  DN: "Denari",
-  SP: "Spade",
-  BA: "Bastoni"
-};
-
+const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
 const RANK_ORDER = ["R", "C", "F", "7", "6", "5", "4", "3", "2", "A"];
 
 ws.onopen = () => {
@@ -20,24 +14,16 @@ ws.onopen = () => {
 
   if (savedId && savedName) {
     joined = true;
-    ws.send(JSON.stringify({
-      type: "join",
-      playerId: savedId,
-      name: savedName
-    }));
-  } else {
-    renderJoin();
-  }
+    ws.send(JSON.stringify({ type: "join", playerId: savedId, name: savedName }));
+  } else renderJoin();
 };
 
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
-
   if (data.type === "joined") {
     localStorage.setItem("five_player_id", data.playerId);
     return;
   }
-
   state = data;
   render();
 };
@@ -54,23 +40,17 @@ function renderJoin() {
       <button id="joinBtn">Entra</button>
     </div>
   `;
-
   document.getElementById("joinBtn").onclick = () => {
     const name = document.getElementById("nameInput").value.trim() || "Giocatore";
     localStorage.setItem("five_player_name", name);
     joined = true;
-    ws.send(JSON.stringify({
-      type: "join",
-      playerId: localStorage.getItem("five_player_id"),
-      name
-    }));
+    ws.send(JSON.stringify({ type: "join", playerId: localStorage.getItem("five_player_id"), name }));
   };
 }
 
 function render() {
   if (!joined) return renderJoin();
   if (!state) return;
-
   app.innerHTML = "";
   renderHeader();
   renderPlayers();
@@ -90,9 +70,7 @@ function renderHeader() {
       ? "Scegli il seme"
       : `Attesa scelta seme da ${state.players[state.dealerIndex]?.name}`;
   }
-  if (state.gameState === "IN_GAME") {
-    status = state.yourTurn ? "È il tuo turno" : `Turno di ${state.players[state.turn]?.name}`;
-  }
+  if (state.gameState === "IN_GAME") status = state.yourTurn ? "È il tuo turno" : `Turno di ${state.players[state.turn]?.name}`;
   if (state.gameState === "HAND_OVER") status = "Mano conclusa";
 
   div.innerHTML = `
@@ -101,7 +79,6 @@ function renderHeader() {
     <div class="message">${state.message || ""}</div>
     <div>${state.chosenSuit ? "Seme scelto: " + SUIT_LABELS[state.chosenSuit] : ""}</div>
   `;
-
   app.appendChild(div);
 }
 
@@ -133,12 +110,34 @@ function renderTable() {
     title.innerText = SUIT_LABELS[suit];
     col.appendChild(title);
 
-    getColumnCards(suit).forEach(card => {
-      const img = document.createElement("img");
-      img.className = "tableCard";
-      img.src = cardImg(card);
-      col.appendChild(img);
-    });
+    const cards = getColumnCards(suit);
+
+    if (cards.length === 10) {
+      col.classList.add("completedSuit");
+      const stack = document.createElement("div");
+      stack.className = "completedStack";
+
+      cards.slice(0, 5).forEach((card, idx) => {
+        const img = document.createElement("img");
+        img.className = "stackCard";
+        img.src = cardImg(card);
+        img.style.setProperty("--i", idx);
+        stack.appendChild(img);
+      });
+
+      const label = document.createElement("div");
+      label.className = "completedLabel";
+      label.innerText = "Seme completato";
+      col.appendChild(stack);
+      col.appendChild(label);
+    } else {
+      cards.forEach(card => {
+        const img = document.createElement("img");
+        img.className = "tableCard";
+        img.src = cardImg(card);
+        col.appendChild(img);
+      });
+    }
 
     table.appendChild(col);
   });
@@ -149,10 +148,8 @@ function renderTable() {
 function getColumnCards(suit) {
   const col = state.table?.[suit];
   if (!col) return [];
-
   const up = [...col.up].sort((a, b) => rankSortDesc(a.rank, b.rank));
   const down = [...col.down].sort((a, b) => rankSortDesc(a.rank, b.rank));
-
   return [...up, ...(col.five ? [col.five] : []), ...down];
 }
 
@@ -168,12 +165,10 @@ function renderHand() {
     const img = document.createElement("img");
     img.className = "handCard";
     img.src = cardImg(card);
-
     img.onclick = () => {
       if (!state.yourTurn) return;
       ws.send(JSON.stringify({ type: "play", index }));
     };
-
     wrap.appendChild(img);
   });
 
