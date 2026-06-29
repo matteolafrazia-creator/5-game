@@ -13,7 +13,7 @@ const RANKS = ["A", "2", "3", "4", "5", "6", "7", "F", "C", "R"];
 const RANK_VALUE = { A: 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, F: 8, C: 9, R: 10 };
 
 let players = [];
-let gameState = "WAITING"; // WAITING | PICK_SUIT | IN_GAME | HAND_OVER
+let gameState = "WAITING";
 let dealerIndex = null;
 let chosenSuit = null;
 let starterIndex = null;
@@ -34,9 +34,7 @@ function createEmptyTable() {
 function createDeck() {
   const d = [];
   for (const suit of SUITS) {
-    for (const rank of RANKS) {
-      d.push({ suit, rank });
-    }
+    for (const rank of RANKS) d.push({ suit, rank });
   }
   return d.sort(() => Math.random() - 0.5);
 }
@@ -52,16 +50,17 @@ function sortHand(hand) {
 function broadcast() {
   players.forEach((p, i) => {
     if (!p.ws || p.ws.readyState !== 1) return;
-
     p.ws.send(JSON.stringify({
       gameState,
       playersCount: players.length,
       players: players.map(x => ({
+        id: x.id,
         name: x.name,
         cards: x.hand.length,
         connected: x.connected
       })),
       yourIndex: i,
+      yourId: p.id,
       dealerIndex,
       chosenSuit,
       starterIndex,
@@ -87,9 +86,7 @@ function startSetup() {
 }
 
 function tryStart() {
-  if (gameState === "WAITING" && players.length === 4) {
-    startSetup();
-  }
+  if (gameState === "WAITING" && players.length === 4) startSetup();
 }
 
 function dealAfterSuit(suit) {
@@ -122,21 +119,15 @@ function canPlay(card) {
   const col = table[card.suit];
   const value = RANK_VALUE[card.rank];
 
-  if (!col.five) {
-    return card.rank === "5";
-  }
+  if (!col.five) return card.rank === "5";
 
   if (value > 5) {
-    const highest = col.up.length
-      ? Math.max(...col.up.map(c => RANK_VALUE[c.rank]))
-      : 5;
+    const highest = col.up.length ? Math.max(...col.up.map(c => RANK_VALUE[c.rank])) : 5;
     return value === highest + 1;
   }
 
   if (value < 5) {
-    const lowest = col.down.length
-      ? Math.min(...col.down.map(c => RANK_VALUE[c.rank]))
-      : 5;
+    const lowest = col.down.length ? Math.min(...col.down.map(c => RANK_VALUE[c.rank])) : 5;
     return value === lowest - 1;
   }
 
@@ -150,8 +141,7 @@ function hasAnyMove(player) {
 function playCard(playerIndex, cardIndex) {
   const player = players[playerIndex];
   const card = player.hand[cardIndex];
-  if (!card) return false;
-  if (!canPlay(card)) return false;
+  if (!card || !canPlay(card)) return;
 
   const col = table[card.suit];
   const value = RANK_VALUE[card.rank];
@@ -166,12 +156,15 @@ function playCard(playerIndex, cardIndex) {
   if (player.hand.length === 0) {
     gameState = "HAND_OVER";
     message = `${player.name} ha vinto la mano!`;
-    return true;
+    return;
   }
 
   turn = (turn + 1) % players.length;
   message = `Turno di ${players[turn].name}.`;
-  return true;
+}
+
+function createId() {
+  return "p_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
 wss.on("connection", (ws) => {
@@ -179,12 +172,24 @@ wss.on("connection", (ws) => {
     const data = JSON.parse(raw);
 
     if (data.type === "join") {
+      let player = players.find(p => p.id === data.playerId);
+
+      if (player) {
+        player.ws = ws;
+        player.connected = true;
+        if (data.name) player.name = data.name;
+        ws.send(JSON.stringify({ type: "joined", playerId: player.id }));
+        broadcast();
+        return;
+      }
+
       if (players.length >= 4) {
         ws.send(JSON.stringify({ gameState: "FULL", message: "Partita piena." }));
         return;
       }
 
-      const player = {
+      player = {
+        id: data.playerId || createId(),
         ws,
         name: data.name || `Giocatore ${players.length + 1}`,
         hand: [],
@@ -192,8 +197,11 @@ wss.on("connection", (ws) => {
       };
 
       players.push(player);
+      ws.send(JSON.stringify({ type: "joined", playerId: player.id }));
+
       tryStart();
       broadcast();
+      return;
     }
 
     const i = players.findIndex(p => p.ws === ws);
@@ -203,14 +211,12 @@ wss.on("connection", (ws) => {
       if (gameState !== "PICK_SUIT") return;
       if (i !== dealerIndex) return;
       if (!SUITS.includes(data.suit)) return;
-
       dealAfterSuit(data.suit);
     }
 
     if (data.type === "play") {
       if (gameState !== "IN_GAME") return;
       if (i !== turn) return;
-
       playCard(i, data.index);
       broadcast();
     }
@@ -225,7 +231,6 @@ wss.on("connection", (ws) => {
         turn = (turn + 1) % players.length;
         message = `${players[i].name} passa. Turno di ${players[turn].name}.`;
       }
-
       broadcast();
     }
   });

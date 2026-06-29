@@ -15,11 +15,30 @@ const SUIT_LABELS = {
 const RANK_ORDER = ["R", "C", "F", "7", "6", "5", "4", "3", "2", "A"];
 
 ws.onopen = () => {
-  renderJoin();
+  const savedId = localStorage.getItem("five_player_id");
+  const savedName = localStorage.getItem("five_player_name");
+
+  if (savedId && savedName) {
+    joined = true;
+    ws.send(JSON.stringify({
+      type: "join",
+      playerId: savedId,
+      name: savedName
+    }));
+  } else {
+    renderJoin();
+  }
 };
 
 ws.onmessage = (event) => {
-  state = JSON.parse(event.data);
+  const data = JSON.parse(event.data);
+
+  if (data.type === "joined") {
+    localStorage.setItem("five_player_id", data.playerId);
+    return;
+  }
+
+  state = data;
   render();
 };
 
@@ -38,8 +57,13 @@ function renderJoin() {
 
   document.getElementById("joinBtn").onclick = () => {
     const name = document.getElementById("nameInput").value.trim() || "Giocatore";
+    localStorage.setItem("five_player_name", name);
     joined = true;
-    ws.send(JSON.stringify({ type: "join", name }));
+    ws.send(JSON.stringify({
+      type: "join",
+      playerId: localStorage.getItem("five_player_id"),
+      name
+    }));
   };
 }
 
@@ -48,7 +72,6 @@ function render() {
   if (!state) return;
 
   app.innerHTML = "";
-
   renderHeader();
   renderPlayers();
   renderTable();
@@ -110,9 +133,7 @@ function renderTable() {
     title.innerText = SUIT_LABELS[suit];
     col.appendChild(title);
 
-    const cards = getColumnCards(suit);
-
-    cards.forEach(card => {
+    getColumnCards(suit).forEach(card => {
       const img = document.createElement("img");
       img.className = "tableCard";
       img.src = cardImg(card);
@@ -132,12 +153,7 @@ function getColumnCards(suit) {
   const up = [...col.up].sort((a, b) => rankSortDesc(a.rank, b.rank));
   const down = [...col.down].sort((a, b) => rankSortDesc(a.rank, b.rank));
 
-  const result = [];
-  result.push(...up);
-  if (col.five) result.push(col.five);
-  result.push(...down);
-
-  return result;
+  return [...up, ...(col.five ? [col.five] : []), ...down];
 }
 
 function rankSortDesc(a, b) {
@@ -183,6 +199,15 @@ function renderActions() {
     pass.onclick = () => ws.send(JSON.stringify({ type: "pass" }));
     div.appendChild(pass);
   }
+
+  const reset = document.createElement("button");
+  reset.innerText = "Esci / reset giocatore";
+  reset.onclick = () => {
+    localStorage.removeItem("five_player_id");
+    localStorage.removeItem("five_player_name");
+    location.reload();
+  };
+  div.appendChild(reset);
 
   app.appendChild(div);
 }
