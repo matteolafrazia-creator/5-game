@@ -319,6 +319,14 @@ function resetMatch(room) {
 function abortRoom(room, reason) {
   room.gameState = "ABORTED";
   room.message = reason || "Partita terminata.";
+
+  room.players.forEach(player => {
+    if (player.reconnectTimer) {
+      clearTimeout(player.reconnectTimer);
+      player.reconnectTimer = null;
+    }
+  });
+
   broadcast(room);
 }
 
@@ -348,8 +356,18 @@ function joinRoom(ws, room, data) {
 
     ws.send(JSON.stringify({ type: "joined", playerId: player.id, roomCode: room.code }));
 
+    if (room.gameState === "ABORTED") {
+      broadcast(room);
+      return;
+    }
+
     room.message = `${player.name} è rientrato.`;
     broadcast(room);
+    return;
+  }
+
+  if (room.gameState === "ABORTED") {
+    ws.send(JSON.stringify({ type: "error", message: "Questa partita è terminata. Crea una nuova stanza." }));
     return;
   }
 

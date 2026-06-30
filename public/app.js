@@ -64,6 +64,10 @@ ws.onmessage = (event) => {
   state = data;
   joined = true;
 
+  if (state.gameState === "ABORTED") {
+    clearSession();
+  }
+
   if (
     ["HAND_OVER", "GAME_OVER"].includes(state.gameState) &&
     !["HAND_OVER", "GAME_OVER"].includes(previousGameState)
@@ -92,6 +96,8 @@ window.addEventListener("focus", () => {
 });
 
 function handleAppResume() {
+  if (state?.gameState === "ABORTED") return;
+
   const savedId = localStorage.getItem("five_player_id");
   const savedName = localStorage.getItem("five_player_name");
   const savedRoom = localStorage.getItem("five_room_code");
