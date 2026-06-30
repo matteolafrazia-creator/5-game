@@ -86,23 +86,12 @@ function broadcast(room) {
   room.players.forEach((p, i) => {
     if (!p.ws || p.ws.readyState !== WebSocket.OPEN) return;
 
-    let messageForPlayer = room.message;
-
-    if (
+    const passNotice =
       room.lastPassNotice &&
       room.gameState === "IN_GAME" &&
       room.lastPassNotice.toIndex === i
-    ) {
-      messageForPlayer = `${room.lastPassNotice.fromName} ha passato, è il tuo turno.`;
-    }
-
-    if (
-      room.lastPassNotice &&
-      room.gameState === "IN_GAME" &&
-      room.lastPassNotice.toIndex !== i
-    ) {
-      messageForPlayer = `Turno di ${room.players[room.turn]?.name || ""}.`;
-    }
+        ? { fromName: room.lastPassNotice.fromName }
+        : null;
 
     p.ws.send(JSON.stringify({
       type: "state",
@@ -126,9 +115,10 @@ function broadcast(room) {
       turn: room.turn,
       yourTurn: room.gameState === "IN_GAME" && room.turn === i,
       openingFiveRequired: room.openingFiveRequired,
+      passNotice,
       hand: p.hand,
       table: room.table,
-      message: messageForPlayer,
+      message: room.message,
       lastCard: room.lastCard,
       handResult: room.handResult,
       standings: standings(room)
@@ -496,7 +486,7 @@ wss.on("connection", (ws) => {
         const fromName = room.players[playerIndex].name;
         room.turn = (room.turn + 1) % room.players.length;
         room.lastPassNotice = { fromName, toIndex: room.turn };
-        room.message = `Turno di ${room.players[room.turn].name}.`;
+        room.message = `${fromName} passa. Turno di ${room.players[room.turn].name}.`;
       }
 
       broadcast(room);

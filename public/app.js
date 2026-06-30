@@ -73,7 +73,13 @@ ws.onmessage = (event) => {
 
   render();
 
-  if (!wasMyTurn && state.yourTurn) showTurnToast();
+  if (!wasMyTurn && state.yourTurn) {
+    const turnText = state.passNotice?.fromName
+      ? `${state.passNotice.fromName} ha passato, è il tuo turno`
+      : "È il tuo turno";
+
+    showTurnToast(turnText);
+  }
 };
 
 
@@ -940,10 +946,10 @@ function renderRulesOverlay() {
   };
 }
 
-function showTurnToast() {
+function showTurnToast(text = "È il tuo turno") {
   const toast = document.createElement("div");
   toast.className = "turnToast";
-  toast.innerText = "È il tuo turno";
+  toast.innerText = text;
 
   document.body.appendChild(toast);
 
