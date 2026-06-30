@@ -1,13 +1,79 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>5</title>
-  <link rel="stylesheet" href="style.css" />
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+/>
+
+<title>5</title>
+
+<meta
+    name="description"
+    content="Gioca a 5 online con i tuoi amici."
+/>
+
+<meta
+    name="theme-color"
+    content="#0f5132"
+/>
+
+<meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+/>
+
+<meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="black-translucent"
+/>
+
+<meta
+    name="apple-mobile-web-app-title"
+    content="5"
+/>
+
+<link rel="manifest" href="manifest.json">
+
+<link
+    rel="apple-touch-icon"
+    href="icons/icon-192.png"
+/>
+
+<link
+    rel="icon"
+    href="icons/icon-192.png"
+/>
+
+<link
+    rel="stylesheet"
+    href="style.css"
+/>
+
 </head>
+
 <body>
-  <div id="app"></div>
-  <script src="app.js"></script>
+
+<div id="app"></div>
+
+<script src="app.js"></script>
+
+<script>
+
+if ("serviceWorker" in navigator) {
+
+    window.addEventListener("load", () => {
+
+        navigator.serviceWorker.register("service-worker.js");
+
+    });
+
+}
+
+</script>
+
 </body>
 </html>

@@ -76,6 +76,39 @@ ws.onmessage = (event) => {
   if (!wasMyTurn && state.yourTurn) showTurnToast();
 };
 
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) handleAppResume();
+});
+
+window.addEventListener("focus", () => {
+  handleAppResume();
+});
+
+function handleAppResume() {
+  const savedId = localStorage.getItem("five_player_id");
+  const savedName = localStorage.getItem("five_player_name");
+  const savedRoom = localStorage.getItem("five_room_code");
+
+  if (!savedId || !savedName || !savedRoom) return;
+
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: "joinRoom",
+      playerId: savedId,
+      name: savedName,
+      roomCode: savedRoom
+    }));
+    return;
+  }
+
+  showSmallToast("Riconnessione...");
+  setTimeout(() => {
+    location.reload();
+  }, 450);
+}
+
+
 function clearSession() {
   localStorage.removeItem("five_player_id");
   localStorage.removeItem("five_room_code");
@@ -105,6 +138,52 @@ function isLastPlayed(card) {
     card.suit === state.lastCard.suit &&
     card.rank === state.lastCard.rank
   );
+}
+
+function cardValue(rank) {
+  const values = { A: 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, F: 8, C: 9, R: 10 };
+  return values[rank];
+}
+
+function canPlayClient(card) {
+  if (!state || state.gameState !== "IN_GAME") return false;
+
+  if (state.openingFiveRequired) {
+    return card.suit === state.chosenSuit && card.rank === "5";
+  }
+
+  const col = state.table?.[card.suit];
+  const value = cardValue(card.rank);
+
+  if (!col || !col.five) return card.rank === "5";
+
+  if (value > 5) {
+    const highest = col.up?.length ? Math.max(...col.up.map(c => cardValue(c.rank))) : 5;
+    return value === highest + 1;
+  }
+
+  if (value < 5) {
+    const lowest = col.down?.length ? Math.min(...col.down.map(c => cardValue(c.rank))) : 5;
+    return value === lowest - 1;
+  }
+
+  return false;
+}
+
+function shouldHighlightOpeningFive(card) {
+  return (
+    state?.yourTurn &&
+    state?.openingFiveRequired &&
+    card.suit === state.chosenSuit &&
+    card.rank === "5"
+  );
+}
+
+function shakeCardElement(el) {
+  el.classList.remove("cardShake");
+  void el.offsetWidth;
+  el.classList.add("cardShake");
+  setTimeout(() => el.classList.remove("cardShake"), 430);
 }
 
 function renderStart() {
@@ -239,11 +318,16 @@ async function copyRoomCode() {
 
 async function shareRoomCode() {
   const url = location.origin;
-  const text = `Vieni a giocare a 5!\nLink: ${url}\nCodice partita: ${state.roomCode}`;
+  const text = `Vieni a giocare a 5!
+Link: ${url}
+Codice partita: ${state.roomCode}`;
 
   try {
     if (navigator.share) {
-      await navigator.share({ title: "5", text, url });
+      await navigator.share({
+        title: "5",
+        text
+      });
     } else {
       await navigator.clipboard.writeText(text);
       showSmallToast("Invito copiato");
@@ -378,11 +462,17 @@ function renderHand() {
 
   state.hand?.forEach((card, index) => {
     const img = document.createElement("img");
-    img.className = "handCard";
+    img.className = shouldHighlightOpeningFive(card) ? "handCard openingFiveCard" : "handCard";
     img.src = cardImg(card);
 
     img.onclick = () => {
       if (!state.yourTurn) return;
+
+      if (!canPlayClient(card)) {
+        shakeCardElement(img);
+        return;
+      }
+
       ws.send(JSON.stringify({ type: "play", index }));
     };
 
@@ -615,11 +705,9 @@ function renderFinalCardNotice() {
   if (existing) return;
 
   const notice = document.createElement("div");
-  notice.className = "finalCardNotice";
+  notice.className = "finalCardNotice finalCardNoticeOnly";
   notice.innerHTML = `
-    <div>Ultima carta</div>
     <img src="${cardImg(state.lastCard)}" />
-    <strong>${state.lastCard.playerName}</strong>
   `;
 
   document.body.appendChild(notice);

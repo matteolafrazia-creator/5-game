@@ -41,7 +41,8 @@ function createRoom(code) {
     handResult: null,
     openingFiveRequired: false,
     currentHandActions: [],
-    matchStartedAt: null
+    matchStartedAt: null,
+    lastPassNotice: null
   };
 }
 
@@ -85,6 +86,24 @@ function broadcast(room) {
   room.players.forEach((p, i) => {
     if (!p.ws || p.ws.readyState !== WebSocket.OPEN) return;
 
+    let messageForPlayer = room.message;
+
+    if (
+      room.lastPassNotice &&
+      room.gameState === "IN_GAME" &&
+      room.lastPassNotice.toIndex === i
+    ) {
+      messageForPlayer = `${room.lastPassNotice.fromName} ha passato, è il tuo turno.`;
+    }
+
+    if (
+      room.lastPassNotice &&
+      room.gameState === "IN_GAME" &&
+      room.lastPassNotice.toIndex !== i
+    ) {
+      messageForPlayer = `Turno di ${room.players[room.turn]?.name || ""}.`;
+    }
+
     p.ws.send(JSON.stringify({
       type: "state",
       roomCode: room.code,
@@ -106,9 +125,10 @@ function broadcast(room) {
       starterIndex: room.starterIndex,
       turn: room.turn,
       yourTurn: room.gameState === "IN_GAME" && room.turn === i,
+      openingFiveRequired: room.openingFiveRequired,
       hand: p.hand,
       table: room.table,
-      message: room.message,
+      message: messageForPlayer,
       lastCard: room.lastCard,
       handResult: room.handResult,
       standings: standings(room)
@@ -134,6 +154,8 @@ function startSetup(room) {
   room.lastCard = null;
   room.openingFiveRequired = false;
   room.currentHandActions = [];
+  room.lastPassNotice = null;
+  room.lastPassNotice = null;
 
   room.players.forEach(p => {
     p.hand = [];
@@ -173,6 +195,8 @@ function dealAfterSuit(room, suit) {
 
 function canPlay(room, card) {
   if (room.openingFiveRequired) return card.suit === room.chosenSuit && card.rank === "5";
+
+  room.lastPassNotice = null;
 
   const col = room.table[card.suit];
   const value = RANK_VALUE[card.rank];
@@ -226,6 +250,8 @@ function playCard(room, playerIndex, cardIndex) {
   const card = player.hand[cardIndex];
 
   if (!card || !canPlay(room, card)) return;
+
+  room.lastPassNotice = null;
 
   const col = room.table[card.suit];
   const value = RANK_VALUE[card.rank];
@@ -290,6 +316,7 @@ function resetMatch(room) {
   room.turn = null;
   room.openingFiveRequired = false;
   room.currentHandActions = [];
+  room.lastPassNotice = null;
   room.matchStartedAt = null;
   room.gameState = "WAITING";
   room.table = createEmptyTable();
@@ -455,8 +482,10 @@ wss.on("connection", (ws) => {
       if (playerIndex !== room.turn) return;
 
       if (room.openingFiveRequired) {
+        room.lastPassNotice = null;
         room.message = "Non puoi passare: devi giocare il 5 del seme scelto.";
       } else if (hasAnyMove(room, room.players[playerIndex])) {
+        room.lastPassNotice = null;
         room.message = "Non puoi passare: hai almeno una mossa disponibile.";
       } else {
         room.currentHandActions.push({
@@ -464,8 +493,10 @@ wss.on("connection", (ws) => {
           playerName: room.players[playerIndex].name
         });
 
+        const fromName = room.players[playerIndex].name;
         room.turn = (room.turn + 1) % room.players.length;
-        room.message = `${room.players[playerIndex].name} passa. Turno di ${room.players[room.turn].name}.`;
+        room.lastPassNotice = { fromName, toIndex: room.turn };
+        room.message = `Turno di ${room.players[room.turn].name}.`;
       }
 
       broadcast(room);
