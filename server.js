@@ -292,6 +292,17 @@ function markReady(room, playerIndex) {
   }
 }
 
+function markNotReady(room, playerIndex) {
+  if (room.gameState !== "HAND_OVER") return;
+
+  room.players[playerIndex].readyNext = false;
+
+  const readyCount = room.players.filter(p => p.readyNext).length;
+  room.message = `${readyCount}/4 giocatori pronti per la prossima mano.`;
+
+  broadcast(room);
+}
+
 function resetMatch(room) {
   room.players.forEach(p => {
     p.hand = [];
@@ -511,6 +522,7 @@ wss.on("connection", (ws) => {
     }
 
     if (data.type === "readyNext") markReady(room, playerIndex);
+    if (data.type === "notReadyNext") markNotReady(room, playerIndex);
     if (data.type === "resetMatch") resetMatch(room);
   });
 

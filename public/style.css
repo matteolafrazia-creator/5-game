@@ -1018,6 +1018,42 @@ input, button {
 }
 
 
+.replayTableModal {
+  width: min(96vw, 720px);
+  max-height: 92dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.replayTableModal .modalExitBtn {
+  position: sticky;
+  top: 0;
+  align-self: flex-end;
+  z-index: 3;
+}
+
+.replayTable {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.replayTableCardPlayed {
+  animation: replayCardPlace 0.28s ease-out both;
+}
+
+@keyframes replayCardPlace {
+  from {
+    opacity: 0.35;
+    transform: scale(1.18) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+
 @media (max-width: 700px) {
   #app {
     padding: 4px;
@@ -1179,6 +1215,46 @@ input, button {
 
   .finalCardNotice {
     padding: 13px 18px;
+  }
+
+
+  .replayOverlay {
+    padding: 6px;
+    align-items: stretch;
+  }
+
+  .replayTableModal {
+    width: 100%;
+    max-height: 96dvh;
+    padding: 8px;
+  }
+
+  .replayTableModal h2 {
+    font-size: 16px;
+    margin: 4px 0;
+  }
+
+  .replayStep {
+    font-size: 12px;
+    min-height: 22px;
+    margin-bottom: 4px;
+  }
+
+  .replayTable {
+    flex: 1;
+  }
+
+  .replaySuitTitle {
+    font-size: 8px;
+  }
+
+  .replayTableCard {
+    max-width: min(10vw, 36px);
+  }
+
+  .replayTableModal .modalExitBtn {
+    font-size: 12px;
+    padding: 6px 8px;
   }
 
 }
