@@ -900,6 +900,65 @@ input, button {
 .replayFixedColumnGrid .replayCardSlot:nth-child(10) { z-index: 9; }
 
 
+.player.oneCard {
+  border: 2px solid #ff7043;
+  box-shadow: 0 0 12px rgba(255, 112, 67, 0.8);
+  background: rgba(255, 112, 67, 0.22);
+}
+
+.durationBox {
+  margin: 10px 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 213, 79, 0.18);
+  color: #111;
+  font-size: 15px;
+}
+
+.finalCardNotice {
+  position: fixed;
+  z-index: 160;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.82);
+  color: #fff;
+  border-radius: 18px;
+  padding: 16px 22px;
+  text-align: center;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+  animation: finalCardNoticeIn 1.35s ease-out both;
+  pointer-events: none;
+}
+
+.finalCardNotice img {
+  display: block;
+  width: 86px;
+  margin: 8px auto;
+  border-radius: 8px;
+  box-shadow: 0 5px 14px rgba(0,0,0,0.45);
+}
+
+@keyframes finalCardNoticeIn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -42%) scale(0.86);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+  78% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -56%) scale(0.95);
+  }
+}
+
+
 @media (max-width: 700px) {
   #app {
     padding: 4px;
@@ -1052,6 +1111,15 @@ input, button {
 
   .replayTableCard {
     max-width: min(10.5vw, 42px);
+  }
+
+
+  .finalCardNotice img {
+    width: 72px;
+  }
+
+  .finalCardNotice {
+    padding: 13px 18px;
   }
 
 }

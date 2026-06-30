@@ -40,7 +40,8 @@ function createRoom(code) {
     handNumber: 1,
     handResult: null,
     openingFiveRequired: false,
-    currentHandActions: []
+    currentHandActions: [],
+    matchStartedAt: null
   };
 }
 
@@ -116,6 +117,10 @@ function broadcast(room) {
 }
 
 function startSetup(room) {
+  if (room.handNumber === 1 && !room.matchStartedAt) {
+    room.matchStartedAt = Date.now();
+  }
+
   room.gameState = "PICK_SUIT";
   room.dealerIndex = room.dealerIndex === null
     ? Math.floor(Math.random() * room.players.length)
@@ -192,6 +197,10 @@ function hasAnyMove(room, player) {
 }
 
 function finishHand(room, winner) {
+  const matchDurationMinutes = room.matchStartedAt
+    ? Math.max(1, Math.round((Date.now() - room.matchStartedAt) / 60000))
+    : 0;
+
   const scores = room.players.map(p => {
     const points = p === winner ? 0 : p.hand.length;
     p.totalScore = (p.totalScore || 0) + points;
@@ -204,7 +213,8 @@ function finishHand(room, winner) {
     scores,
     showStandings: room.handNumber === 5 || room.handNumber === 10,
     final: room.handNumber === 10,
-    replay: [...room.currentHandActions]
+    replay: [...room.currentHandActions],
+    matchDurationMinutes: room.handNumber === 10 ? matchDurationMinutes : null
   };
 
   room.gameState = room.handNumber === 10 ? "GAME_OVER" : "HAND_OVER";
@@ -280,6 +290,7 @@ function resetMatch(room) {
   room.turn = null;
   room.openingFiveRequired = false;
   room.currentHandActions = [];
+  room.matchStartedAt = null;
   room.gameState = "WAITING";
   room.table = createEmptyTable();
   room.message = "Nuova partita. In attesa giocatori...";
@@ -504,5 +515,5 @@ wss.on("connection", (ws) => {
 });
 
 server.listen(process.env.PORT || 10000, () => {
-  console.log("Gioco 5 v0.9.1-beta replay fixed online");
+  console.log("Gioco 5 v0.9.3-beta playtest fixes online");
 });

@@ -7,12 +7,16 @@ let errorMessage = "";
 let thinkingTimer = null;
 let activeThinkerName = null;
 let replayRunning = false;
+let endOverlayVisibleAt = 0;
+let endOverlayTimer = null;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
 const VERTICAL_SLOTS = ["R", "C", "F", "7", "6", "5", "4", "3", "2", "A"];
 
 ws.onopen = () => {
+  preloadCardImages();
+
   const savedId = localStorage.getItem("five_player_id");
   const savedName = localStorage.getItem("five_player_name");
   const savedRoom = localStorage.getItem("five_room_code");
@@ -56,8 +60,17 @@ ws.onmessage = (event) => {
   }
 
   const wasMyTurn = state?.yourTurn;
+  const previousGameState = state?.gameState;
   state = data;
   joined = true;
+
+  if (
+    ["HAND_OVER", "GAME_OVER"].includes(state.gameState) &&
+    !["HAND_OVER", "GAME_OVER"].includes(previousGameState)
+  ) {
+    delayEndOverlayForLastCard();
+  }
+
   render();
 
   if (!wasMyTurn && state.yourTurn) showTurnToast();
@@ -252,11 +265,16 @@ function renderPlayers() {
       el.classList.add("active");
     }
 
+    if (state.gameState === "IN_GAME" && p.cards === 1) {
+      el.classList.add("oneCard");
+    }
+
     const ready = state.gameState === "HAND_OVER"
       ? (p.readyNext ? " · pronto" : " · attesa")
       : "";
 
-    el.innerText = `${p.name} · ${p.cards} carte · ${p.totalScore || 0} pt${ready} ${p.connected ? "" : "(offline)"}`;
+    const cardText = p.cards === 1 ? "1 carta" : `${p.cards} carte`;
+    el.innerText = `${p.name} · ${cardText}${ready} ${p.connected ? "" : "(offline)"}`;
 
     div.appendChild(el);
   });
@@ -434,6 +452,11 @@ function renderEndOverlay() {
   if (!["HAND_OVER", "GAME_OVER"].includes(state.gameState) || !state.handResult) return;
   if (replayRunning) return;
 
+  if (Date.now() < endOverlayVisibleAt) {
+    renderFinalCardNotice();
+    return;
+  }
+
   const overlay = document.createElement("div");
   overlay.className = "overlay";
 
@@ -444,6 +467,10 @@ function renderEndOverlay() {
   const standings = state.handResult.showStandings
     ? `<h3>${state.handResult.final ? "🏁 Classifica finale" : "⏱️ Classifica parziale dopo 5 mani"}</h3>
        <ol class="standingsList">${state.standings.map((s, index) => `<li><span>${podiumIcon(index)} ${s.name}</span><strong>${s.total} pt</strong></li>`).join("")}</ol>`
+    : "";
+
+  const durationBox = state.gameState === "GAME_OVER" && state.handResult.matchDurationMinutes
+    ? `<div class="durationBox">Durata totale: <strong>${state.handResult.matchDurationMinutes} min</strong></div>`
     : "";
 
   const readyCount = state.players.filter(p => p.readyNext).length;
@@ -463,6 +490,7 @@ function renderEndOverlay() {
       <h3>Punteggi mano</h3>
       <ul>${scores}</ul>
       ${standings}
+      ${durationBox}
       <div class="endButtons">
         ${replayAvailable ? '<button id="watchReplayBtn" class="secondaryBtn">Rivedi la mano</button>' : ""}
         ${
@@ -554,6 +582,52 @@ function renderPassWarningOverlay() {
   };
 }
 
+
+
+
+function preloadCardImages() {
+  SUITS.forEach(suit => {
+    VERTICAL_SLOTS.forEach(rank => {
+      const img = new Image();
+      img.src = cardImg({ suit, rank });
+    });
+  });
+}
+
+function delayEndOverlayForLastCard() {
+  endOverlayVisibleAt = Date.now() + 1500;
+
+  if (endOverlayTimer) {
+    clearTimeout(endOverlayTimer);
+    endOverlayTimer = null;
+  }
+
+  endOverlayTimer = setTimeout(() => {
+    endOverlayTimer = null;
+    render();
+  }, 1550);
+}
+
+function renderFinalCardNotice() {
+  if (!state.lastCard) return;
+
+  const existing = document.querySelector(".finalCardNotice");
+  if (existing) return;
+
+  const notice = document.createElement("div");
+  notice.className = "finalCardNotice";
+  notice.innerHTML = `
+    <div>Ultima carta</div>
+    <img src="${cardImg(state.lastCard)}" />
+    <strong>${state.lastCard.playerName}</strong>
+  `;
+
+  document.body.appendChild(notice);
+
+  setTimeout(() => {
+    notice.remove();
+  }, 1350);
+}
 
 
 function podiumIcon(index) {
