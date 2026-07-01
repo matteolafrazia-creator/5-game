@@ -6,7 +6,6 @@ function byId(id) {
     const scoped = renderTarget.getElementById(id);
     if (scoped) return scoped;
   }
-
   return document.getElementById(id);
 }
 
@@ -70,6 +69,7 @@ ws.onmessage = (event) => {
     return;
   }
 
+  const previousState = state;
   const wasMyTurn = state?.yourTurn;
   const previousGameState = state?.gameState;
   state = data;
@@ -86,7 +86,11 @@ ws.onmessage = (event) => {
     delayEndOverlayForLastCard();
   }
 
-  render();
+  if (canUseLiveGameplayUpdate(previousState, state)) {
+    updateGameplayInPlace(previousState);
+  } else {
+    render();
+  }
 
   if (!wasMyTurn && state.yourTurn) {
     const turnText = state.passNotice?.fromName
@@ -302,6 +306,153 @@ function render() {
   scheduleThinkingNotice();
 }
 
+
+function canUseLiveGameplayUpdate(previousState, nextState) {
+  if (!previousState || !nextState) return false;
+  if (previousState.gameState !== "IN_GAME") return false;
+  if (nextState.gameState !== "IN_GAME") return false;
+  if (previousState.roomCode !== nextState.roomCode) return false;
+  if (!document.querySelector(".table")) return false;
+  if (!document.querySelector(".hand")) return false;
+  return true;
+}
+
+function handSignature(hand) {
+  return (hand || []).map(card => `${card.suit}_${card.rank}`).join("|");
+}
+
+function updateGameplayInPlace(previousState) {
+  updateHeaderInPlace();
+  updatePlayersInPlace();
+  updateLastCardInPlace();
+  updateTableInPlace();
+  updateHandInPlace(previousState);
+  updateActionsInPlace();
+  renderPassWarningOverlay();
+  scheduleThinkingNotice();
+}
+
+function replaceSectionInPlace(selector, renderFn) {
+  const current = document.querySelector(selector);
+  if (!current) {
+    render();
+    return;
+  }
+
+  const oldTarget = renderTarget;
+  const fragment = document.createDocumentFragment();
+  renderTarget = fragment;
+  renderFn();
+  renderTarget = oldTarget;
+
+  const next = fragment.firstElementChild;
+  if (next) current.replaceWith(next);
+}
+
+function updateHeaderInPlace() {
+  replaceSectionInPlace(".header", renderHeader);
+}
+
+function updatePlayersInPlace() {
+  replaceSectionInPlace(".players", renderPlayers);
+}
+
+function updateLastCardInPlace() {
+  const current = document.querySelector(".lastCardBox");
+
+  const oldTarget = renderTarget;
+  const fragment = document.createDocumentFragment();
+  renderTarget = fragment;
+  renderLastCard();
+  renderTarget = oldTarget;
+
+  const next = fragment.firstElementChild;
+
+  if (current && next) {
+    const currentKey = current.dataset.cardKey || "";
+    const nextKey = state.lastCard ? `${state.lastCard.suit}_${state.lastCard.rank}_${state.lastCard.playerName}` : "";
+    if (currentKey !== nextKey) current.replaceWith(next);
+    return;
+  }
+
+  if (!current && next) {
+    const table = document.querySelector(".table");
+    if (table) table.insertAdjacentElement("beforebegin", next);
+  }
+
+  if (current && !next) current.remove();
+}
+
+function updateActionsInPlace() {
+  replaceSectionInPlace(".actions", renderActions);
+}
+
+function updateTableInPlace() {
+  SUITS.forEach(suit => {
+    const cardsByRank = getCardsByRank(suit);
+
+    VERTICAL_SLOTS.forEach(rank => {
+      const slot = document.querySelector(`.cardSlot[data-suit="${suit}"][data-rank="${rank}"]`);
+      if (!slot) return;
+
+      const card = cardsByRank[rank];
+      const nextKey = card ? `${card.suit}_${card.rank}` : "";
+      const currentKey = slot.dataset.cardKey || "";
+
+      if (currentKey === nextKey) {
+        const existing = slot.querySelector("img");
+        if (existing) {
+          if (card && isLastPlayed(card)) existing.classList.add("tableCardPlayed");
+          else existing.classList.remove("tableCardPlayed");
+        }
+        return;
+      }
+
+      slot.dataset.cardKey = nextKey;
+      slot.innerHTML = "";
+
+      if (card) {
+        const img = document.createElement("img");
+        img.className = isLastPlayed(card) ? "tableCard tableCardPlayed" : "tableCard";
+        img.src = cardImg(card);
+        img.dataset.cardKey = nextKey;
+        slot.appendChild(img);
+      }
+    });
+  });
+}
+
+function updateHandInPlace(previousState) {
+  const hand = document.querySelector(".hand");
+  if (!hand) return;
+
+  hand.className = state.yourTurn ? "hand handActive" : "hand";
+
+  if (handSignature(previousState.hand) === handSignature(state.hand)) return;
+
+  hand.innerHTML = "";
+
+  state.hand?.forEach((card, index) => {
+    const img = document.createElement("img");
+    img.className = shouldHighlightOpeningFive(card) ? "handCard openingFiveCard" : "handCard";
+    img.src = cardImg(card);
+
+    img.onclick = () => {
+      if (!state.yourTurn) return;
+
+      if (!canPlayClient(card)) {
+        shakeCardElement(img);
+        return;
+      }
+
+      ws.send(JSON.stringify({ type: "play", index }));
+    };
+
+    hand.appendChild(img);
+  });
+}
+
+
 function renderHeader() {
   const div = document.createElement("div");
   div.className = "header";
@@ -400,6 +551,7 @@ function renderLastCard() {
 
   const div = document.createElement("div");
   div.className = "lastCardBox";
+  div.dataset.cardKey = `${state.lastCard.suit}_${state.lastCard.rank}_${state.lastCard.playerName}`;
   div.innerHTML = `<span>Ultima carta:</span> <img src="${cardImg(state.lastCard)}" /> <span>${state.lastCard.playerName}</span>`;
   renderTarget.appendChild(div);
 }
@@ -411,6 +563,7 @@ function renderTable() {
   SUITS.forEach(suit => {
     const col = document.createElement("div");
     col.className = "suitColumn";
+    col.dataset.suit = suit;
 
     const title = document.createElement("div");
     title.className = "suitTitle";
@@ -450,13 +603,18 @@ function renderTable() {
       VERTICAL_SLOTS.forEach(rank => {
         const slot = document.createElement("div");
         slot.className = rank === "5" ? "cardSlot fiveSlot" : "cardSlot";
+        slot.dataset.suit = suit;
+        slot.dataset.rank = rank;
 
         const card = cardsByRank[rank];
 
         if (card) {
+          const key = `${card.suit}_${card.rank}`;
           const img = document.createElement("img");
           img.className = isLastPlayed(card) ? "tableCard tableCardPlayed" : "tableCard";
           img.src = cardImg(card);
+          img.dataset.cardKey = key;
+          slot.dataset.cardKey = key;
           slot.appendChild(img);
         }
 
@@ -841,22 +999,14 @@ function renderReplayOverlay(actions) {
 
   function clearLastHighlight() {
     if (!lastReplayCard) return;
-
-    const slot = replayTableBox.querySelector(
-      `.replayCardSlot[data-suit="${lastReplayCard.suit}"][data-rank="${lastReplayCard.rank}"]`
-    );
-
+    const slot = replayTableBox.querySelector(`.replayCardSlot[data-suit="${lastReplayCard.suit}"][data-rank="${lastReplayCard.rank}"]`);
     const existing = slot?.querySelector("img");
     if (existing) existing.classList.remove("replayTableCardLast");
   }
 
   function placeReplayCard(card) {
     if (!card || !card.suit || !card.rank) return;
-
-    const slot = replayTableBox.querySelector(
-      `.replayCardSlot[data-suit="${card.suit}"][data-rank="${card.rank}"]`
-    );
-
+    const slot = replayTableBox.querySelector(`.replayCardSlot[data-suit="${card.suit}"][data-rank="${card.rank}"]`);
     if (!slot) return;
 
     const key = `${card.suit}_${card.rank}`;
@@ -893,7 +1043,6 @@ function renderReplayOverlay(actions) {
     }
 
     const action = actions[index];
-
     clearLastHighlight();
 
     if (action.type === "chooseSuit") {
