@@ -1,3 +1,5 @@
+/* BUILD_CHECK: V0983_STRONG_LEAVE_MESSAGE_GUARD_APP */
+console.log("BUILD_CHECK V0983_STRONG_LEAVE_MESSAGE_GUARD loaded");
 /* BUILD_CHECK: V0982_LEAVE_OLD_ROOM_MESSAGES_FIX_APP */
 console.log("BUILD_CHECK V0982_LEAVE_OLD_ROOM_MESSAGES_FIX loaded");
 /* BUILD_CHECK: V0981_COMPLETE_SUIT_MOBILE_FIX_APP */
@@ -25,6 +27,7 @@ let activeThinkerName = null;
 let replayRunning = false;
 let endOverlayVisibleAt = 0;
 let endOverlayTimer = null;
+let ignoreMessagesAfterLeave = false;
 let ignoringOldRoomCode = null;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
@@ -55,6 +58,14 @@ ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
 
   if (
+    ignoreMessagesAfterLeave &&
+    data.type !== "joined" &&
+    data.type !== "error"
+  ) {
+    return;
+  }
+
+  if (
     ignoringOldRoomCode &&
     data.type === "state" &&
     data.roomCode === ignoringOldRoomCode
@@ -63,6 +74,7 @@ ws.onmessage = (event) => {
   }
 
   if (data.type === "joined") {
+    ignoreMessagesAfterLeave = false;
     ignoringOldRoomCode = null;
     localStorage.setItem("five_player_id", data.playerId);
     localStorage.setItem("five_room_code", data.roomCode);
@@ -79,6 +91,7 @@ ws.onmessage = (event) => {
   }
 
   if (data.type === "error") {
+    ignoreMessagesAfterLeave = false;
     errorMessage = data.message;
     joined = false;
     renderStart();
@@ -160,6 +173,7 @@ function clearSession() {
 function leaveGame() {
   if (!confirm("Vuoi davvero uscire dalla partita?")) return;
 
+  ignoreMessagesAfterLeave = true;
   ignoringOldRoomCode = state?.roomCode || localStorage.getItem("five_room_code");
 
   try {
@@ -260,6 +274,7 @@ function renderStart() {
     const name = getName();
     localStorage.setItem("five_player_name", name);
     errorMessage = "";
+    ignoreMessagesAfterLeave = false;
     ignoringOldRoomCode = null;
     joined = true;
 
@@ -282,6 +297,7 @@ function renderStart() {
 
     localStorage.setItem("five_player_name", name);
     errorMessage = "";
+    ignoreMessagesAfterLeave = false;
     ignoringOldRoomCode = null;
     joined = true;
 
@@ -895,6 +911,7 @@ function renderAbortedOverlay() {
   renderTarget.appendChild(overlay);
 
   byId("backHomeBtn").onclick = () => {
+    ignoreMessagesAfterLeave = true;
     clearSession();
     joined = false;
     state = null;
