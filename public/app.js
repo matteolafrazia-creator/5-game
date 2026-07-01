@@ -1,3 +1,5 @@
+/* BUILD_CHECK: V0982_LEAVE_OLD_ROOM_MESSAGES_FIX_APP */
+console.log("BUILD_CHECK V0982_LEAVE_OLD_ROOM_MESSAGES_FIX loaded");
 /* BUILD_CHECK: V0981_COMPLETE_SUIT_MOBILE_FIX_APP */
 console.log("BUILD_CHECK V0981_COMPLETE_SUIT_MOBILE_FIX loaded");
 /* BUILD_CHECK: V098_SAFARI_LIVE_GAMEPLAY_FIX_APP */
@@ -23,6 +25,7 @@ let activeThinkerName = null;
 let replayRunning = false;
 let endOverlayVisibleAt = 0;
 let endOverlayTimer = null;
+let ignoringOldRoomCode = null;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
@@ -51,7 +54,16 @@ ws.onopen = () => {
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
 
+  if (
+    ignoringOldRoomCode &&
+    data.type === "state" &&
+    data.roomCode === ignoringOldRoomCode
+  ) {
+    return;
+  }
+
   if (data.type === "joined") {
+    ignoringOldRoomCode = null;
     localStorage.setItem("five_player_id", data.playerId);
     localStorage.setItem("five_room_code", data.roomCode);
     joined = true;
@@ -147,6 +159,8 @@ function clearSession() {
 
 function leaveGame() {
   if (!confirm("Vuoi davvero uscire dalla partita?")) return;
+
+  ignoringOldRoomCode = state?.roomCode || localStorage.getItem("five_room_code");
 
   try {
     ws.send(JSON.stringify({ type: "leaveRoom" }));
@@ -246,6 +260,7 @@ function renderStart() {
     const name = getName();
     localStorage.setItem("five_player_name", name);
     errorMessage = "";
+    ignoringOldRoomCode = null;
     joined = true;
 
     ws.send(JSON.stringify({
@@ -267,6 +282,7 @@ function renderStart() {
 
     localStorage.setItem("five_player_name", name);
     errorMessage = "";
+    ignoringOldRoomCode = null;
     joined = true;
 
     ws.send(JSON.stringify({
