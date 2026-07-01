@@ -1,3 +1,5 @@
+/* BUILD_CHECK: V0984_LEFT_ROOM_BLOCKLIST_FIX_APP */
+console.log("BUILD_CHECK V0984_LEFT_ROOM_BLOCKLIST_FIX loaded");
 /* BUILD_CHECK: V0983_STRONG_LEAVE_MESSAGE_GUARD_APP */
 console.log("BUILD_CHECK V0983_STRONG_LEAVE_MESSAGE_GUARD loaded");
 /* BUILD_CHECK: V0982_LEAVE_OLD_ROOM_MESSAGES_FIX_APP */
@@ -27,6 +29,7 @@ let activeThinkerName = null;
 let replayRunning = false;
 let endOverlayVisibleAt = 0;
 let endOverlayTimer = null;
+const blockedRoomCodes = new Set();
 let ignoreMessagesAfterLeave = false;
 let ignoringOldRoomCode = null;
 
@@ -56,6 +59,14 @@ ws.onopen = () => {
 
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
+
+  if (
+    data.type === "state" &&
+    data.roomCode &&
+    blockedRoomCodes.has(data.roomCode)
+  ) {
+    return;
+  }
 
   if (
     ignoreMessagesAfterLeave &&
@@ -173,8 +184,19 @@ function clearSession() {
 function leaveGame() {
   if (!confirm("Vuoi davvero uscire dalla partita?")) return;
 
-  ignoreMessagesAfterLeave = true;
-  ignoringOldRoomCode = state?.roomCode || localStorage.getItem("five_room_code");
+  const roomToLeave = state?.roomCode || localStorage.getItem("five_room_code");
+
+  if (roomToLeave) {
+    blockedRoomCodes.add(roomToLeave);
+  }
+
+  if (typeof ignoreMessagesAfterLeave !== "undefined") {
+    ignoreMessagesAfterLeave = true;
+  }
+
+  if (typeof ignoringOldRoomCode !== "undefined") {
+    ignoringOldRoomCode = roomToLeave;
+  }
 
   try {
     ws.send(JSON.stringify({ type: "leaveRoom" }));
