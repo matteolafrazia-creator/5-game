@@ -1,3 +1,5 @@
+/* BUILD_CHECK: V098_SAFARI_LIVE_GAMEPLAY_FIX_APP */
+console.log("BUILD_CHECK V098_SAFARI_LIVE_GAMEPLAY_FIX_APP loaded");
 const app = document.getElementById("app");
 let renderTarget = app;
 
