@@ -1,13 +1,14 @@
 {
-  "name": "5-game",
-  "version": "1.0.0",
+  "name": "five-game",
+  "version": "0.9.5",
+  "description": "Gioco 5 online multiplayer",
   "main": "server.js",
-  "type": "commonjs",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "dependencies": {
-    "express": "^5.2.1",
-    "ws": "^8.21.0"
+    "express": "^4.18.2",
+    "ws": "^8.16.0"
   }
 }
