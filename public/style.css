@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V0986_BRAND_LOGO_PISTACHIO_STYLE */
 /* BUILD_CHECK: V098_SAFARI_LIVE_GAMEPLAY_FIX_STYLE */
 * {
   box-sizing: border-box;
@@ -1303,5 +1304,56 @@ input, button {
 @media (max-width: 700px) {
   .tableCardPlayed {
     animation: none !important;
+  }
+}
+
+
+
+/* v0.9.8.6 brand update: home logo + pistachio rank */
+.homeLogo {
+  width: min(260px, 68vw);
+  max-height: 260px;
+  object-fit: contain;
+  border-radius: 18px;
+  box-shadow: 0 14px 34px rgba(0,0,0,0.38);
+  margin-bottom: 12px;
+}
+
+.homeClaim {
+  font-size: clamp(20px, 4.8vw, 30px);
+  font-weight: 800;
+  color: #f5d889;
+  text-align: center;
+  margin: 8px 0 22px;
+  letter-spacing: 0.2px;
+}
+
+.pistachioRankIcon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  vertical-align: middle;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
+}
+
+.standingsList .pistachioRankIcon {
+  margin-right: 4px;
+}
+
+@media (max-width: 700px) {
+  .homeLogo {
+    width: min(220px, 72vw);
+    max-height: 220px;
+    border-radius: 14px;
+  }
+
+  .homeClaim {
+    font-size: 21px;
+    margin-bottom: 18px;
+  }
+
+  .pistachioRankIcon {
+    width: 24px;
+    height: 24px;
   }
 }

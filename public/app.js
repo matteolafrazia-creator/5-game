@@ -1,3 +1,5 @@
+/* BUILD_CHECK: V0986_BRAND_LOGO_PISTACHIO_APP */
+console.log("BUILD_CHECK V0986_BRAND_LOGO_PISTACHIO loaded");
 /* BUILD_CHECK: V0984_LEFT_ROOM_BLOCKLIST_FIX_APP */
 console.log("BUILD_CHECK V0984_LEFT_ROOM_BLOCKLIST_FIX loaded");
 /* BUILD_CHECK: V0983_STRONG_LEAVE_MESSAGE_GUARD_APP */
@@ -272,8 +274,8 @@ function renderStart() {
 
   app.innerHTML = `
     <div class="screen startScreen">
-      <h1>5</h1>
-      <p>Gioca online con i tuoi amici</p>
+      <img class="homeLogo" src="assets/logo-5.jpeg" alt="5" />
+      <p class="homeClaim">Una partita non basterà</p>
 
       ${errorMessage ? `<div class="errorBox">${errorMessage}</div>` : ""}
 
@@ -288,7 +290,7 @@ function renderStart() {
 
       <button id="rulesBtn" class="rulesBtn">❓ Come si gioca?</button>
 
-      <div class="betaLabel">Beta 0.9.0</div>
+      <div class="betaLabel">Beta v0.9.8.6</div>
     </div>
   `;
 
@@ -1020,7 +1022,8 @@ function podiumIcon(index) {
   if (index === 0) return "🥇";
   if (index === 1) return "🥈";
   if (index === 2) return "🥉";
-  return "4°";
+  if (index === 3) return '<img class="pistachioRankIcon" src="assets/pistacchio-4.png" alt="Pistacchio" />';
+  return "";
 }
 
 function renderReplayOverlay(actions) {
