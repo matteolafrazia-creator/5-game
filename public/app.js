@@ -765,10 +765,10 @@ function renderReplayOverlay(actions) {
   overlay.className = "replayOverlay";
 
   overlay.innerHTML = `
-    <div class="replayTableModal">
+    <div class="replayTableModal replayTableModalNoFlash">
       <button id="closeReplayBtn" class="modalExitBtn">Chiudi</button>
       <h2>Replay della mano</h2>
-      <div id="replayStep" class="replayStep">Avvio replay...</div>
+      <div id="replayStep" class="replayStep replayStepTop">Avvio replay...</div>
       <div id="replayTableBox" class="replayTableBox"></div>
     </div>
   `;
@@ -793,13 +793,7 @@ function renderReplayOverlay(actions) {
 
   close.onclick = closeReplay;
 
-  function placeReplayCard(card) {
-    if (!card || !card.suit || !card.rank) return;
-    if (!replayCards[card.suit]) replayCards[card.suit] = {};
-    replayCards[card.suit][card.rank] = card;
-  }
-
-  function drawReplayTable() {
+  function buildReplayTableOnce() {
     replayTableBox.innerHTML = "";
 
     const table = document.createElement("div");
@@ -808,6 +802,7 @@ function renderReplayOverlay(actions) {
     SUITS.forEach(suit => {
       const col = document.createElement("div");
       col.className = "replaySuitColumn";
+      col.dataset.suit = suit;
 
       const title = document.createElement("div");
       title.className = "replaySuitTitle";
@@ -820,22 +815,8 @@ function renderReplayOverlay(actions) {
       VERTICAL_SLOTS.forEach(rank => {
         const slot = document.createElement("div");
         slot.className = rank === "5" ? "replayCardSlot replayFiveSlot" : "replayCardSlot";
-
-        const card = replayCards[suit]?.[rank];
-
-        if (card) {
-          const img = document.createElement("img");
-          img.className =
-            lastReplayCard &&
-            card.suit === lastReplayCard.suit &&
-            card.rank === lastReplayCard.rank
-              ? "replayTableCard replayTableCardLast"
-              : "replayTableCard";
-
-          img.src = cardImg(card);
-          slot.appendChild(img);
-        }
-
+        slot.dataset.suit = suit;
+        slot.dataset.rank = rank;
         grid.appendChild(slot);
       });
 
@@ -846,12 +827,57 @@ function renderReplayOverlay(actions) {
     replayTableBox.appendChild(table);
   }
 
+  function setReplayCard(card, isLast) {
+    if (!card || !card.suit || !card.rank) return;
+
+    const slot = replayTableBox.querySelector(
+      `.replayCardSlot[data-suit="${card.suit}"][data-rank="${card.rank}"]`
+    );
+
+    if (!slot) return;
+
+    const key = `${card.suit}_${card.rank}`;
+    if (slot.dataset.cardKey === key) {
+      const existing = slot.querySelector("img");
+      if (existing && isLast) {
+        existing.classList.remove("replayTableCardLast");
+        void existing.offsetWidth;
+        existing.classList.add("replayTableCardLast");
+      }
+      return;
+    }
+
+    slot.dataset.cardKey = key;
+    slot.innerHTML = "";
+
+    const img = document.createElement("img");
+    img.className = isLast ? "replayTableCard replayTableCardLast" : "replayTableCard";
+    img.src = cardImg(card);
+    slot.appendChild(img);
+  }
+
+  function clearLastHighlight() {
+    if (!lastReplayCard) return;
+
+    const slot = replayTableBox.querySelector(
+      `.replayCardSlot[data-suit="${lastReplayCard.suit}"][data-rank="${lastReplayCard.rank}"]`
+    );
+
+    const existing = slot?.querySelector("img");
+    if (existing) existing.classList.remove("replayTableCardLast");
+  }
+
+  function placeReplayCard(card) {
+    if (!card || !card.suit || !card.rank) return;
+    if (!replayCards[card.suit]) replayCards[card.suit] = {};
+    replayCards[card.suit][card.rank] = card;
+  }
+
   function showNext() {
     if (stopped) return;
 
     if (!actions || actions.length === 0) {
       step.innerText = "Replay non disponibile";
-      drawReplayTable();
       return;
     }
 
@@ -862,13 +888,16 @@ function renderReplayOverlay(actions) {
 
     const action = actions[index];
 
+    clearLastHighlight();
+
     if (action.type === "chooseSuit") {
       step.innerText = `${action.playerName} sceglie ${SUIT_LABELS[action.suit]}`;
-      lastReplayCard = { suit: action.suit, rank: "5" };
+      lastReplayCard = null;
     } else if (action.type === "play") {
       step.innerText = `${action.playerName} gioca`;
       placeReplayCard(action.card);
       lastReplayCard = action.card;
+      setReplayCard(action.card, true);
     } else if (action.type === "pass") {
       step.innerText = `${action.playerName} passa`;
       lastReplayCard = null;
@@ -877,13 +906,11 @@ function renderReplayOverlay(actions) {
       lastReplayCard = null;
     }
 
-    drawReplayTable();
-
     index += 1;
     replayTimer = setTimeout(showNext, 850);
   }
 
-  drawReplayTable();
+  buildReplayTableOnce();
   replayTimer = setTimeout(showNext, 350);
 }
 

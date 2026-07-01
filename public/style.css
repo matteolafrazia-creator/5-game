@@ -1310,3 +1310,83 @@ input, button {
   position: relative;
   z-index: 1;
 }
+
+
+
+/* HOTFIX replay no-flash + readable header */
+.replayTableModalNoFlash {
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+  gap: 6px !important;
+  overflow: hidden !important;
+}
+
+.replayStepTop {
+  position: static !important;
+  z-index: auto !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: #111 !important;
+  border-radius: 10px !important;
+  padding: 5px 8px !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+  box-shadow: none !important;
+}
+
+.replayTableBox {
+  min-height: 0 !important;
+  overflow: hidden !important;
+  position: static !important;
+}
+
+.replayGameTable {
+  height: 100% !important;
+  position: static !important;
+}
+
+.replayTableCardLast {
+  animation: replayCardPlaceNoFlash 0.24s ease-out both !important;
+}
+
+@keyframes replayCardPlaceNoFlash {
+  from {
+    opacity: 0.45;
+    transform: scale(1.12) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+
+
+@media (max-width: 700px) {
+  .replayTableModalNoFlash {
+    max-height: 96dvh !important;
+    height: auto !important;
+    padding: 8px !important;
+    grid-template-rows: auto auto minmax(0, 1fr) !important;
+  }
+
+  .replayTableModalNoFlash h2 {
+    font-size: 15px !important;
+    margin: 2px 0 !important;
+  }
+
+  .replayStepTop {
+    font-size: 12px !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 4px 6px !important;
+  }
+
+  .replaySuitTitle {
+    font-size: 8px !important;
+    margin-bottom: 1px !important;
+  }
+
+  .replayTableCard {
+    max-width: min(9.5vw, 34px) !important;
+  }
+}
