@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V0985_SERVER_ROOM_CLOSE_TIMER_FIX */
 const http = require("http");
 const express = require("express");
 const WebSocket = require("ws");
@@ -328,18 +329,40 @@ function resetMatch(room) {
 }
 
 function abortRoom(room, reason) {
+  closeRoomPermanently(room, reason || "Partita terminata.");
+}
+
+
+function clearPlayerReconnectTimer(player) {
+  if (!player) return;
+
+  if (player.reconnectTimer) {
+    clearTimeout(player.reconnectTimer);
+    player.reconnectTimer = null;
+  }
+}
+
+function clearRoomReconnectTimers(room) {
+  if (!room || !room.players) return;
+  room.players.forEach(player => clearPlayerReconnectTimer(player));
+}
+
+function closeRoomPermanently(room, reason) {
+  if (!room) return;
+  if (room.closed) return;
+
+  room.closed = true;
   room.gameState = "ABORTED";
   room.message = reason || "Partita terminata.";
 
-  room.players.forEach(player => {
-    if (player.reconnectTimer) {
-      clearTimeout(player.reconnectTimer);
-      player.reconnectTimer = null;
-    }
-  });
-
+  clearRoomReconnectTimers(room);
   broadcast(room);
+
+  setTimeout(() => {
+    rooms.delete(room.code);
+  }, 1000);
 }
+
 
 function getRoomAndPlayer(ws) {
   const roomCode = ws.roomCode;
@@ -350,6 +373,11 @@ function getRoomAndPlayer(ws) {
 
 function joinRoom(ws, room, data) {
   let player = room.players.find(p => p.id === data.playerId);
+
+  if (room.closed) {
+    ws.send(JSON.stringify({ type: "error", message: "Questa partita è terminata. Crea una nuova stanza." }));
+    return;
+  }
 
   if (player) {
     if (player.reconnectTimer) {
@@ -414,17 +442,14 @@ function removePlayerExplicitly(ws) {
   if (!roomCode || !rooms.has(roomCode)) return;
 
   const room = rooms.get(roomCode);
+  if (room.closed) return;
+
   const index = room.players.findIndex(p => p.ws === ws || p.id === ws.playerId);
   if (index === -1) return;
 
   const player = room.players[index];
 
-  if (player.reconnectTimer) {
-    clearTimeout(player.reconnectTimer);
-    player.reconnectTimer = null;
-  }
-
-  room.players.splice(index, 1);
+  clearPlayerReconnectTimer(player);
 
   ws.roomCode = null;
   ws.playerId = null;
@@ -435,17 +460,24 @@ function removePlayerExplicitly(ws) {
     }
   } catch {}
 
+  // If a player manually exits once the game has started, close the room permanently.
+  // This prevents any pending reconnect timeout from firing later and broadcasting
+  // "non è rientrato entro 60 secondi" after everyone has returned home.
+  if (["PICK_SUIT", "IN_GAME", "HAND_OVER", "GAME_OVER"].includes(room.gameState)) {
+    closeRoomPermanently(room, `${player.name} è uscito. Partita terminata.`);
+    return;
+  }
+
+  room.players.splice(index, 1);
+
   if (room.players.length === 0) {
+    clearRoomReconnectTimers(room);
     rooms.delete(roomCode);
     return;
   }
 
-  if (["PICK_SUIT", "IN_GAME", "HAND_OVER", "GAME_OVER"].includes(room.gameState)) {
-    abortRoom(room, `${player.name} è uscito. Partita terminata.`);
-  } else {
-    room.message = `${player.name} è uscito dalla stanza.`;
-    broadcast(room);
-  }
+  room.message = `${player.name} è uscito dalla stanza.`;
+  broadcast(room);
 }
 
 wss.on("connection", (ws) => {
@@ -531,6 +563,7 @@ wss.on("connection", (ws) => {
     if (!roomCode || !rooms.has(roomCode)) return;
 
     const room = rooms.get(roomCode);
+    if (room.closed) return;
     const player = room.players.find(p => p.id === ws.playerId);
     if (!player) return;
 
@@ -560,7 +593,9 @@ wss.on("connection", (ws) => {
       if (currentPlayer.connected) return;
       if (currentPlayer.ws && currentPlayer.ws.readyState === WebSocket.OPEN) return;
 
-      abortRoom(currentRoom, `${currentPlayer.name} non è rientrato entro 60 secondi. Partita terminata.`);
+      if (!currentRoom.closed) {
+        abortRoom(currentRoom, `${currentPlayer.name} non è rientrato entro 60 secondi. Partita terminata.`);
+      }
     }, RECONNECT_MS);
   });
 });
