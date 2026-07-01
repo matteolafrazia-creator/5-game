@@ -1,4 +1,15 @@
 const app = document.getElementById("app");
+let renderTarget = app;
+
+function byId(id) {
+  if (renderTarget && typeof renderTarget.getElementById === "function") {
+    const scoped = renderTarget.getElementById(id);
+    if (scoped) return scoped;
+  }
+
+  return document.getElementById(id);
+}
+
 const ws = new WebSocket(location.origin.replace("http", "ws"));
 
 let state = null;
@@ -223,7 +234,7 @@ function renderStart() {
     </div>
   `;
 
-  document.getElementById("createBtn").onclick = () => {
+  byId("createBtn").onclick = () => {
     const name = getName();
     localStorage.setItem("five_player_name", name);
     errorMessage = "";
@@ -236,9 +247,9 @@ function renderStart() {
     }));
   };
 
-  document.getElementById("joinBtn").onclick = () => {
+  byId("joinBtn").onclick = () => {
     const name = getName();
-    const roomCode = document.getElementById("roomInput").value.trim().toUpperCase();
+    const roomCode = byId("roomInput").value.trim().toUpperCase();
 
     if (!roomCode) {
       errorMessage = "Inserisci un codice partita.";
@@ -258,20 +269,22 @@ function renderStart() {
     }));
   };
 
-  document.getElementById("rulesBtn").onclick = () => {
+  byId("rulesBtn").onclick = () => {
     renderRulesOverlay();
   };
 }
 
 function getName() {
-  return document.getElementById("nameInput").value.trim() || "Giocatore";
+  return byId("nameInput").value.trim() || "Giocatore";
 }
 
 function render() {
   if (!joined) return renderStart();
   if (!state) return;
 
-  app.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+  renderTarget = fragment;
+
   renderHeader();
   renderPlayers();
   renderLastCard();
@@ -282,6 +295,10 @@ function render() {
   renderEndOverlay();
   renderAbortedOverlay();
   renderPassWarningOverlay();
+
+  renderTarget = app;
+  app.replaceChildren(fragment);
+
   scheduleThinkingNotice();
 }
 
@@ -310,11 +327,11 @@ function renderHeader() {
     <div>${state.chosenSuit ? "Seme scelto: " + SUIT_LABELS[state.chosenSuit] : ""}</div>
   `;
 
-  app.appendChild(div);
+  renderTarget.appendChild(div);
 
-  document.getElementById("topExitBtn").onclick = leaveGame;
-  document.getElementById("copyCodeBtn").onclick = async () => await copyRoomCode();
-  document.getElementById("shareCodeBtn").onclick = async () => await shareRoomCode();
+  byId("topExitBtn").onclick = leaveGame;
+  byId("copyCodeBtn").onclick = async () => await copyRoomCode();
+  byId("shareCodeBtn").onclick = async () => await shareRoomCode();
 }
 
 async function copyRoomCode() {
@@ -375,7 +392,7 @@ function renderPlayers() {
     div.appendChild(el);
   });
 
-  app.appendChild(div);
+  renderTarget.appendChild(div);
 }
 
 function renderLastCard() {
@@ -384,7 +401,7 @@ function renderLastCard() {
   const div = document.createElement("div");
   div.className = "lastCardBox";
   div.innerHTML = `<span>Ultima carta:</span> <img src="${cardImg(state.lastCard)}" /> <span>${state.lastCard.playerName}</span>`;
-  app.appendChild(div);
+  renderTarget.appendChild(div);
 }
 
 function renderTable() {
@@ -452,7 +469,7 @@ function renderTable() {
     table.appendChild(col);
   });
 
-  app.appendChild(table);
+  renderTarget.appendChild(table);
 }
 
 function getCardsByRank(suit) {
@@ -491,7 +508,7 @@ function renderHand() {
     wrap.appendChild(img);
   });
 
-  app.appendChild(wrap);
+  renderTarget.appendChild(wrap);
 }
 
 function renderActions() {
@@ -505,7 +522,7 @@ function renderActions() {
     div.appendChild(pass);
   }
 
-  app.appendChild(div);
+  renderTarget.appendChild(div);
 }
 
 function renderSuitOverlay() {
@@ -523,9 +540,9 @@ function renderSuitOverlay() {
       </div>
     `;
 
-    app.appendChild(overlay);
+    renderTarget.appendChild(overlay);
 
-    const box = document.getElementById("suitButtons");
+    const box = byId("suitButtons");
 
     SUITS.forEach(suit => {
       const img = document.createElement("img");
@@ -546,7 +563,7 @@ function renderSuitOverlay() {
       </div>
     `;
 
-    app.appendChild(overlay);
+    renderTarget.appendChild(overlay);
   }
 }
 
@@ -604,16 +621,16 @@ function renderEndOverlay() {
     </div>
   `;
 
-  app.appendChild(overlay);
+  renderTarget.appendChild(overlay);
 
-  document.getElementById("endExitBtn").onclick = leaveGame;
+  byId("endExitBtn").onclick = leaveGame;
 
-  const replay = document.getElementById("watchReplayBtn");
+  const replay = byId("watchReplayBtn");
   if (replay) {
     replay.onclick = () => renderReplayOverlay(state.handResult.replay);
   }
 
-  const ready = document.getElementById("readyNextBtn");
+  const ready = byId("readyNextBtn");
 
   if (ready) {
     ready.onclick = () => {
@@ -621,7 +638,7 @@ function renderEndOverlay() {
     };
   }
 
-  const notReady = document.getElementById("notReadyNextBtn");
+  const notReady = byId("notReadyNextBtn");
 
   if (notReady) {
     notReady.onclick = () => {
@@ -629,7 +646,7 @@ function renderEndOverlay() {
     };
   }
 
-  const reset = document.getElementById("resetMatchBtn");
+  const reset = byId("resetMatchBtn");
 
   if (reset) {
     reset.onclick = () => {
@@ -652,9 +669,9 @@ function renderAbortedOverlay() {
     </div>
   `;
 
-  app.appendChild(overlay);
+  renderTarget.appendChild(overlay);
 
-  document.getElementById("backHomeBtn").onclick = () => {
+  byId("backHomeBtn").onclick = () => {
     clearSession();
     joined = false;
     state = null;
@@ -684,9 +701,9 @@ function renderPassWarningOverlay() {
     </div>
   `;
 
-  app.appendChild(overlay);
+  renderTarget.appendChild(overlay);
 
-  document.getElementById("closePassWarningBtn").onclick = () => {
+  byId("closePassWarningBtn").onclick = () => {
     overlay.remove();
   };
 }
@@ -747,26 +764,29 @@ function podiumIcon(index) {
 function renderReplayOverlay(actions) {
   replayRunning = true;
 
-  const replayTable = createEmptyReplayTable();
   let lastReplayCard = null;
 
   const overlay = document.createElement("div");
   overlay.className = "replayOverlay";
 
   overlay.innerHTML = `
-    <div class="replayTableModal">
-      <button id="closeReplayBtn" class="modalExitBtn">Chiudi</button>
-      <h2>Replay della mano</h2>
-      <div id="replayStep" class="replayStep">Preparazione replay...</div>
-      <div id="replayTable" class="replayTable"></div>
+    <div class="replayNativeModal">
+      <div class="replayNativeHeader">
+        <h2>Replay della mano</h2>
+        <button id="closeReplayBtn" class="replayCloseBtn">Chiudi</button>
+      </div>
+
+      <div id="replayStep" class="replayNativeStep">Avvio replay...</div>
+
+      <div id="replayTableBox" class="replayNativeTableBox"></div>
     </div>
   `;
 
   document.body.appendChild(overlay);
 
-  const step = document.getElementById("replayStep");
-  const replayTableEl = document.getElementById("replayTable");
-  const close = document.getElementById("closeReplayBtn");
+  const step = byId("replayStep");
+  const replayTableBox = byId("replayTableBox");
+  const close = byId("closeReplayBtn");
 
   let index = 0;
   let stopped = false;
@@ -777,54 +797,20 @@ function renderReplayOverlay(actions) {
     replayRunning = false;
     if (replayTimer) clearTimeout(replayTimer);
     overlay.remove();
+    render();
   }
 
   close.onclick = closeReplay;
 
-  function showNext() {
-    if (stopped) return;
+  function buildReplayTableOnce() {
+    replayTableBox.innerHTML = "";
 
-    if (index >= actions.length) {
-      step.innerText = "Replay concluso";
-      return;
-    }
-
-    const action = actions[index];
-
-    if (action.type === "chooseSuit") {
-      step.innerText = `${action.playerName} sceglie ${SUIT_LABELS[action.suit]}`;
-      lastReplayCard = { suit: action.suit, rank: "5" };
-    }
-
-    if (action.type === "play") {
-      step.innerText = `${action.playerName} gioca`;
-      addReplayCardToTable(replayTable, action.card);
-      lastReplayCard = action.card;
-    }
-
-    if (action.type === "pass") {
-      step.innerText = `${action.playerName} passa`;
-      lastReplayCard = null;
-    }
-
-    renderReplayTableInto(replayTableEl, replayTable, lastReplayCard);
-
-    index += 1;
-    replayTimer = setTimeout(showNext, 850);
-  }
-
-  renderReplayTableInto(replayTableEl, replayTable, lastReplayCard);
-  replayTimer = setTimeout(showNext, 350);
-}
-
-function renderReplayTableInto(container, replayTable, lastReplayCard) {
-  if (!container.dataset.built) {
-    container.innerHTML = "";
+    const table = document.createElement("div");
+    table.className = "replayGameTable replayGameTableNative";
 
     SUITS.forEach(suit => {
       const col = document.createElement("div");
       col.className = "replaySuitColumn";
-      col.dataset.suit = suit;
 
       const title = document.createElement("div");
       title.className = "replaySuitTitle";
@@ -837,48 +823,103 @@ function renderReplayTableInto(container, replayTable, lastReplayCard) {
       VERTICAL_SLOTS.forEach(rank => {
         const slot = document.createElement("div");
         slot.className = rank === "5" ? "replayCardSlot replayFiveSlot" : "replayCardSlot";
+        slot.dataset.suit = suit;
         slot.dataset.rank = rank;
         grid.appendChild(slot);
       });
 
       col.appendChild(grid);
-      container.appendChild(col);
+      table.appendChild(col);
     });
 
-    container.dataset.built = "true";
+    replayTableBox.appendChild(table);
   }
 
-  SUITS.forEach(suit => {
-    const cardsByRank = getReplayCardsByRank(replayTable, suit);
+  function setActionText(text) {
+    step.innerText = text;
+  }
 
-    VERTICAL_SLOTS.forEach(rank => {
-      const slot = container.querySelector(`[data-suit="${suit}"] [data-rank="${rank}"]`);
-      if (!slot) return;
+  function clearLastHighlight() {
+    if (!lastReplayCard) return;
 
-      const card = cardsByRank[rank];
-      const currentKey = slot.dataset.cardKey || "";
-      const nextKey = card ? `${card.suit}_${card.rank}` : "";
+    const slot = replayTableBox.querySelector(
+      `.replayCardSlot[data-suit="${lastReplayCard.suit}"][data-rank="${lastReplayCard.rank}"]`
+    );
 
-      if (currentKey === nextKey) return;
+    const existing = slot?.querySelector("img");
+    if (existing) existing.classList.remove("replayTableCardLast");
+  }
 
-      slot.dataset.cardKey = nextKey;
+  function placeReplayCard(card) {
+    if (!card || !card.suit || !card.rank) return;
+
+    const slot = replayTableBox.querySelector(
+      `.replayCardSlot[data-suit="${card.suit}"][data-rank="${card.rank}"]`
+    );
+
+    if (!slot) return;
+
+    const key = `${card.suit}_${card.rank}`;
+
+    if (slot.dataset.cardKey !== key) {
+      slot.dataset.cardKey = key;
       slot.innerHTML = "";
 
-      if (card) {
-        const img = document.createElement("img");
-        img.className =
-          lastReplayCard &&
-          card.suit === lastReplayCard.suit &&
-          card.rank === lastReplayCard.rank
-            ? "replayTableCard replayTableCardPlayed"
-            : "replayTableCard";
+      const img = document.createElement("img");
+      img.className = "replayTableCard";
+      img.src = cardImg(card);
+      slot.appendChild(img);
+    }
 
-        img.src = cardImg(card);
-        slot.appendChild(img);
-      }
-    });
-  });
+    const img = slot.querySelector("img");
+    if (img) {
+      img.classList.remove("replayTableCardLast");
+      void img.offsetWidth;
+      img.classList.add("replayTableCardLast");
+    }
+  }
+
+  function showNext() {
+    if (stopped) return;
+
+    if (!actions || actions.length === 0) {
+      setActionText("Replay non disponibile");
+      return;
+    }
+
+    if (index >= actions.length) {
+      setActionText("Replay concluso");
+      return;
+    }
+
+    const action = actions[index];
+
+    clearLastHighlight();
+
+    if (action.type === "chooseSuit") {
+      setActionText(`${action.playerName} sceglie ${SUIT_LABELS[action.suit]}`);
+      lastReplayCard = null;
+    } else if (action.type === "play") {
+      setActionText(`${action.playerName} gioca`);
+      placeReplayCard(action.card);
+      lastReplayCard = action.card;
+    } else if (action.type === "pass") {
+      setActionText(`${action.playerName} passa`);
+      lastReplayCard = null;
+    } else {
+      setActionText("Azione replay");
+      lastReplayCard = null;
+    }
+
+    index += 1;
+    replayTimer = setTimeout(showNext, 850);
+  }
+
+  buildReplayTableOnce();
+  replayTimer = setTimeout(showNext, 350);
 }
+
+
 
 function createEmptyReplayTable() {
   return {
@@ -1018,7 +1059,7 @@ function renderRulesOverlay() {
 
   document.body.appendChild(overlay);
 
-  document.getElementById("closeRulesBtn").onclick = () => {
+  byId("closeRulesBtn").onclick = () => {
     overlay.remove();
   };
 }
