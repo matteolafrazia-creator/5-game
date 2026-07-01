@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V0988_REPLAY_NATIVE_DESKTOP_CSS_FIX_STYLE */
 /* BUILD_CHECK: V0986_BRAND_LOGO_PISTACHIO_STYLE */
 /* BUILD_CHECK: V098_SAFARI_LIVE_GAMEPLAY_FIX_STYLE */
 * {
@@ -1355,5 +1356,122 @@ input, button {
   .pistachioRankIcon {
     width: 24px;
     height: 24px;
+  }
+}
+
+
+
+/* v0.9.8.8 replay native desktop layout fix */
+.replayNativeModal {
+  background: #fff !important;
+  color: #111 !important;
+  border-radius: 16px !important;
+  width: min(760px, 96vw) !important;
+  height: min(88dvh, 720px) !important;
+  max-height: 88dvh !important;
+  padding: 12px !important;
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+  text-align: center !important;
+  animation: modalIn 0.25s ease-out both !important;
+}
+
+.replayNativeHeader {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  min-height: 34px !important;
+  flex-shrink: 0 !important;
+}
+
+.replayNativeHeader h2 {
+  margin: 0 !important;
+  font-size: 20px !important;
+  line-height: 1.1 !important;
+}
+
+.replayCloseBtn {
+  border: none !important;
+  border-radius: 8px !important;
+  background: #ef5350 !important;
+  color: #fff !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  padding: 7px 10px !important;
+  margin: 0 !important;
+  font-size: 12px !important;
+  min-width: auto !important;
+  flex-shrink: 0 !important;
+}
+
+.replayNativeStep {
+  position: static !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #ffd54f !important;
+  color: #111 !important;
+  border-radius: 10px !important;
+  padding: 8px 10px !important;
+  min-height: 34px !important;
+  text-align: center !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  box-shadow: none !important;
+  flex-shrink: 0 !important;
+}
+
+.replayNativeTableBox {
+  min-height: 0 !important;
+  overflow: hidden !important;
+  height: 100% !important;
+}
+
+.replayGameTableNative {
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+@media (max-width: 700px) {
+  .replayOverlay {
+    padding: 6px !important;
+    align-items: stretch !important;
+  }
+
+  .replayNativeModal {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 96dvh !important;
+    padding: 8px !important;
+    grid-template-rows: auto auto minmax(0, 1fr) !important;
+  }
+
+  .replayNativeHeader {
+    min-height: 30px !important;
+  }
+
+  .replayNativeHeader h2 {
+    font-size: 15px !important;
+  }
+
+  .replayCloseBtn {
+    font-size: 11px !important;
+    padding: 6px 8px !important;
+  }
+
+  .replayNativeStep {
+    font-size: 12px !important;
+    min-height: 28px !important;
+    padding: 5px 7px !important;
+  }
+
+  .replayTableCard {
+    max-width: min(9.5vw, 34px) !important;
   }
 }
