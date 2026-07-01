@@ -1,3 +1,5 @@
+/* BUILD_CHECK: V0981_COMPLETE_SUIT_MOBILE_FIX_APP */
+console.log("BUILD_CHECK V0981_COMPLETE_SUIT_MOBILE_FIX loaded");
 /* BUILD_CHECK: V098_SAFARI_LIVE_GAMEPLAY_FIX_APP */
 console.log("BUILD_CHECK V098_SAFARI_LIVE_GAMEPLAY_FIX_APP loaded");
 const app = document.getElementById("app");
@@ -389,8 +391,53 @@ function updateActionsInPlace() {
   replaceSectionInPlace(".actions", renderActions);
 }
 
+
+function isSuitCompleteInState(table, suit) {
+  const col = table?.[suit];
+  if (!col) return false;
+
+  const count =
+    (col.up?.length || 0) +
+    (col.down?.length || 0) +
+    (col.five ? 1 : 0);
+
+  return count === 10;
+}
+
+function rebuildSuitColumnInPlace(suit) {
+  const oldColumn = document.querySelector(`.suitColumn[data-suit="${suit}"]`);
+  if (!oldColumn) return false;
+
+  const oldTarget = renderTarget;
+  const fragment = document.createDocumentFragment();
+  renderTarget = fragment;
+  renderTable();
+  renderTarget = oldTarget;
+
+  const newColumn = fragment.querySelector(`.suitColumn[data-suit="${suit}"]`);
+  if (!newColumn) return false;
+
+  oldColumn.replaceWith(newColumn);
+  return true;
+}
+
+
 function updateTableInPlace() {
   SUITS.forEach(suit => {
+    const existingColumn = document.querySelector(`.suitColumn[data-suit="${suit}"]`);
+    const isCurrentlyCompact = existingColumn?.classList.contains("completedSuit");
+    const shouldBeCompact = isSuitCompleteInState(state.table, suit);
+
+    // If a suit becomes complete during live update, rebuild only that suit column.
+    // This keeps the mobile table stable but still enables the compact completed-suit layout.
+    if (shouldBeCompact && !isCurrentlyCompact) {
+      rebuildSuitColumnInPlace(suit);
+      return;
+    }
+
+    // If the column is already compact, no slot-by-slot update is needed.
+    if (shouldBeCompact && isCurrentlyCompact) return;
+
     const cardsByRank = getCardsByRank(suit);
 
     VERTICAL_SLOTS.forEach(rank => {
