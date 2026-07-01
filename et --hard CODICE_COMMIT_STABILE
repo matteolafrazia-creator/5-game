@@ -1,0 +1,62 @@
+[33md5eacd5[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m V.0.9.4
+[33m7c4a120[m[33m ([m[1;31morigin/main[m[33m)[m fix replay floating action text
+[33m16d3906[m fix replay description visibility
+[33m024b000[m fix replay no flash and header layout
+[33md5f6b81[m fix replay overlay and close behavior
+[33mff48bfb[m fix replay startup
+[33m713d3b7[m fix replay and non pronto
+[33m1b7150e[m fix replay and non pronto button
+[33m6af2394[m add project structure
+[33me6a41bf[m[33m ([m[1;33mtag: [m[1;33mv0.9.5.1-golden[m[33m)[m v0.9.5 beta replay and ready fixes
+[33mb4abd75[m fix reconnect notifications after aborted game
+[33m46991df[m fix pass notice in turn popup
+[33m0422edc[m v0.9.4 beta feedback fixes
+[33me9498a6[m v0.9.3 beta playtest fixes
+[33mca32c9f[m add table replay and end screen exit
+[33me7067a3[m fix replay package startup
+[33m1bea753[m add replay and gameplay polish
+[33m9aa4886[m restore UI and add rules section
+[33m2b1b1dd[m add rules section and always show pass warning
+[33m9d96a87[m sync latest complete game files
+[33m332951a[m fix reconnect stale socket timeout
+[33macba0f6[m add polished gameplay animations
+[33mafb89e2[m return home immediately on exit
+[33m99d2433[m add game link to share message
+[33macb415b[m v0.9.0 beta 2 ready next hand and room sharing
+[33m6812d46[m bring latest scale cards to front
+[33m353ba56[m move exit button to header
+[33m48789ba[m add room code lobby and exit button
+[33md352ad5[m align five center and highlight hand on turn
+[33me2f7f79[m require player to play opening five
+[33mc4ff6f5[m fit full table and hand on screen with suit overlay
+[33md35bad3[m add end game scoring mobile optimization last card turn toast
+[33m493f7b1[m add completed suit stack animation
+[33m714a552[m add player reconnect on refresh
+[33mddf3af8[m add napoletane card images
+[33m68cb725[m v2 clean game engine with napoletane cards
+[33m9443288[m fix dealer selection UI + game flow
+[33m7968d14[m fix stable game flow
+[33mfa03c40[m final ui pro update
+[33m6656963[m fix full game flow
+[33m59ace06[m sync full working game
+[33m1c9a548[m restore full game logic
+[33md626bec[m full upgrade game v2
+[33m9bfaf33[m full upgrade game v2
+[33mdbaaa9d[m update game server
+[33mc8e9a7f[m fix game logic and UI
+[33mfc2c688[m refactor: modern frontend + clean backend architecture
+[33m053b5b7[m final game rules 5
+[33m2a649bb[m add playable turn-based game 5
+[33m6b52769[m fix full UI rendering game 5
+[33m6d6b499[m fix real multiplayer state sync
+[33m2a2757e[m fix full game sync
+[33m8c406c6[m full playable game 5 base
+[33m7196d10[m game playable full base
+[33m4a92658[m add playable client
+[33md57eca6[m playable version
+[33m537406c[m add multiplayer base websocket
+[33m32dc089[m multiplayer base
+[33mb7fad95[m fix express dependency
+[33ma1648a8[m fix render http websocket
+[33m7de49ea[m fix render websocket
+[33m2fb35d7[m first working version 5
