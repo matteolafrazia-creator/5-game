@@ -877,7 +877,10 @@ function renderEndOverlay() {
         ${replayAvailable ? '<button id="watchReplayBtn" class="secondaryBtn">Rivedi la mano</button>' : ""}
         ${
           state.gameState === "HAND_OVER"
-            ? `<p>${readyCount}/4 giocatori pronti</p>${readyList}<button id="readyNextBtn">${meReady ? "In attesa degli altri..." : "Pronto"}</button>`
+            ? `<p>${readyCount}/4 giocatori pronti</p>${readyList}${meReady
+  ? `<button id="notReadyNextBtn" class="secondaryBtn">Non pronto</button>`
+  : `<button id="readyNextBtn">Pronto</button>`
+}`
             : '<button id="resetMatchBtn">Nuova partita</button>'
         }
       </div>
