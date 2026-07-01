@@ -1054,6 +1054,35 @@ input, button {
 }
 
 
+/* HOTFIX replay + non pronto */
+.secondaryBtn {
+  background: rgba(0,0,0,0.12) !important;
+  color: #111 !important;
+}
+
+.replayOverlay {
+  z-index: 180;
+}
+
+.replayTableModal {
+  width: min(760px, 96vw);
+  height: min(88dvh, 720px);
+  max-height: 92dvh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.replayTableBox {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.replayTableModal .modalExitBtn {
+  z-index: 10;
+}
+
+
 @media (max-width: 700px) {
   #app {
     padding: 4px;

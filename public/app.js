@@ -583,6 +583,16 @@ function renderEndOverlay() {
     ? `<div class="readyList">${state.players.map(p => `<div>${p.readyNext ? "✅" : "⏳"} ${p.name}</div>`).join("")}</div>`
     : "";
 
+  let actionButton = "";
+
+  if (state.gameState === "HAND_OVER") {
+    actionButton = meReady
+      ? '<button id="notReadyNextBtn" class="secondaryBtn">Non pronto</button>'
+      : '<button id="readyNextBtn">Pronto</button>';
+  } else {
+    actionButton = '<button id="resetMatchBtn">Nuova partita</button>';
+  }
+
   overlay.innerHTML = `
     <div class="modal victoryModal ${state.gameState === "GAME_OVER" ? "finalVictoryModal" : ""}">
       <button id="endExitBtn" class="modalExitBtn">Esci</button>
@@ -595,18 +605,16 @@ function renderEndOverlay() {
       ${durationBox}
       <div class="endButtons">
         ${replayAvailable ? '<button id="watchReplayBtn" class="secondaryBtn">Rivedi la mano</button>' : ""}
-        ${
-          state.gameState === "HAND_OVER"
-            ? `<p>${readyCount}/4 giocatori pronti</p>${readyList}<button id="readyNextBtn">${meReady ? "In attesa degli altri..." : "Pronto"}</button>`
-            : '<button id="resetMatchBtn">Nuova partita</button>'
-        }
+        ${state.gameState === "HAND_OVER" ? `<p>${readyCount}/4 giocatori pronti</p>${readyList}` : ""}
+        ${actionButton}
       </div>
     </div>
   `;
 
   app.appendChild(overlay);
 
-  document.getElementById("endExitBtn").onclick = leaveGame;
+  const exit = document.getElementById("endExitBtn");
+  if (exit) exit.onclick = leaveGame;
 
   const replay = document.getElementById("watchReplayBtn");
   if (replay) {
@@ -614,7 +622,6 @@ function renderEndOverlay() {
   }
 
   const ready = document.getElementById("readyNextBtn");
-
   if (ready) {
     ready.onclick = () => {
       ws.send(JSON.stringify({ type: "readyNext" }));
@@ -622,7 +629,6 @@ function renderEndOverlay() {
   }
 
   const notReady = document.getElementById("notReadyNextBtn");
-
   if (notReady) {
     notReady.onclick = () => {
       ws.send(JSON.stringify({ type: "notReadyNext" }));
@@ -630,7 +636,6 @@ function renderEndOverlay() {
   }
 
   const reset = document.getElementById("resetMatchBtn");
-
   if (reset) {
     reset.onclick = () => {
       ws.send(JSON.stringify({ type: "resetMatch" }));
@@ -758,14 +763,14 @@ function renderReplayOverlay(actions) {
       <button id="closeReplayBtn" class="modalExitBtn">Chiudi</button>
       <h2>Replay della mano</h2>
       <div id="replayStep" class="replayStep">Preparazione replay...</div>
-      <div id="replayTable" class="replayTable"></div>
+      <div id="replayTableBox" class="replayTableBox"></div>
     </div>
   `;
 
   document.body.appendChild(overlay);
 
   const step = document.getElementById("replayStep");
-  const replayTableEl = document.getElementById("replayTable");
+  const replayTableBox = document.getElementById("replayTableBox");
   const close = document.getElementById("closeReplayBtn");
 
   let index = 0;
@@ -807,78 +812,17 @@ function renderReplayOverlay(actions) {
       lastReplayCard = null;
     }
 
-    renderReplayTableInto(replayTableEl, replayTable, lastReplayCard);
+    renderReplayTable(replayTableBox, replayTable, lastReplayCard);
 
     index += 1;
     replayTimer = setTimeout(showNext, 850);
   }
 
-  renderReplayTableInto(replayTableEl, replayTable, lastReplayCard);
+  renderReplayTable(replayTableBox, replayTable, lastReplayCard);
   replayTimer = setTimeout(showNext, 350);
 }
 
-function renderReplayTableInto(container, replayTable, lastReplayCard) {
-  if (!container.dataset.built) {
-    container.innerHTML = "";
 
-    SUITS.forEach(suit => {
-      const col = document.createElement("div");
-      col.className = "replaySuitColumn";
-      col.dataset.suit = suit;
-
-      const title = document.createElement("div");
-      title.className = "replaySuitTitle";
-      title.innerText = SUIT_LABELS[suit];
-      col.appendChild(title);
-
-      const grid = document.createElement("div");
-      grid.className = "replayFixedColumnGrid";
-
-      VERTICAL_SLOTS.forEach(rank => {
-        const slot = document.createElement("div");
-        slot.className = rank === "5" ? "replayCardSlot replayFiveSlot" : "replayCardSlot";
-        slot.dataset.rank = rank;
-        grid.appendChild(slot);
-      });
-
-      col.appendChild(grid);
-      container.appendChild(col);
-    });
-
-    container.dataset.built = "true";
-  }
-
-  SUITS.forEach(suit => {
-    const cardsByRank = getReplayCardsByRank(replayTable, suit);
-
-    VERTICAL_SLOTS.forEach(rank => {
-      const slot = container.querySelector(`[data-suit="${suit}"] [data-rank="${rank}"]`);
-      if (!slot) return;
-
-      const card = cardsByRank[rank];
-      const currentKey = slot.dataset.cardKey || "";
-      const nextKey = card ? `${card.suit}_${card.rank}` : "";
-
-      if (currentKey === nextKey) return;
-
-      slot.dataset.cardKey = nextKey;
-      slot.innerHTML = "";
-
-      if (card) {
-        const img = document.createElement("img");
-        img.className =
-          lastReplayCard &&
-          card.suit === lastReplayCard.suit &&
-          card.rank === lastReplayCard.rank
-            ? "replayTableCard replayTableCardPlayed"
-            : "replayTableCard";
-
-        img.src = cardImg(card);
-        slot.appendChild(img);
-      }
-    });
-  });
-}
 
 function createEmptyReplayTable() {
   return {
