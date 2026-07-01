@@ -768,11 +768,9 @@ function renderReplayOverlay(actions) {
     <div class="replayTableModal replayTableModalNoFlash">
       <button id="closeReplayBtn" class="modalExitBtn">Chiudi</button>
       <h2>Replay della mano</h2>
-      <div class="replayInfoBar">
-        <div id="replayStep" class="replayStep replayStepTop">Avvio replay...</div>
-      </div>
       <div id="replayTableBox" class="replayTableBox"></div>
     </div>
+    <div id="replayStep" class="replayFloatingStep">Avvio replay...</div>
   `;
 
   document.body.appendChild(overlay);

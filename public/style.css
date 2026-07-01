@@ -1439,3 +1439,47 @@ input, button {
     padding: 5px 6px !important;
   }
 }
+
+
+
+/* HOTFIX replay floating action text */
+.replayFloatingStep {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: 18px !important;
+  transform: translateX(-50%) !important;
+  z-index: 9999 !important;
+  background: #ffd54f !important;
+  color: #111 !important;
+  border-radius: 14px !important;
+  padding: 10px 16px !important;
+  min-width: min(360px, 84vw) !important;
+  max-width: 88vw !important;
+  text-align: center !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.45) !important;
+  pointer-events: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.replayTableModalNoFlash {
+  grid-template-rows: auto minmax(0, 1fr) !important;
+}
+
+
+
+@media (max-width: 700px) {
+  .replayFloatingStep {
+    bottom: 10px !important;
+    font-size: 13px !important;
+    padding: 8px 12px !important;
+    min-width: 76vw !important;
+  }
+
+  .replayTableModalNoFlash {
+    max-height: calc(96dvh - 44px) !important;
+  }
+}
