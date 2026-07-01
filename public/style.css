@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V0989_CUSTOM_PODIUM_ICONS_STYLE */
 /* BUILD_CHECK: V0988_REPLAY_NATIVE_DESKTOP_CSS_FIX_STYLE */
 /* BUILD_CHECK: V0986_BRAND_LOGO_PISTACHIO_STYLE */
 /* BUILD_CHECK: V098_SAFARI_LIVE_GAMEPLAY_FIX_STYLE */
@@ -1329,16 +1330,17 @@ input, button {
   letter-spacing: 0.2px;
 }
 
-.pistachioRankIcon {
+.podiumIcon {
   width: 28px;
   height: 28px;
   object-fit: contain;
   vertical-align: middle;
+  margin-right: 4px;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
 }
 
-.standingsList .pistachioRankIcon {
-  margin-right: 4px;
+.standingsList .podiumIcon {
+  margin-right: 6px;
 }
 
 @media (max-width: 700px) {
@@ -1353,7 +1355,7 @@ input, button {
     margin-bottom: 18px;
   }
 
-  .pistachioRankIcon {
+  .podiumIcon {
     width: 24px;
     height: 24px;
   }
