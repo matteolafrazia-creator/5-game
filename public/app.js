@@ -788,6 +788,7 @@ function renderReplayOverlay(actions) {
     replayRunning = false;
     if (replayTimer) clearTimeout(replayTimer);
     overlay.remove();
+    render();
   }
 
   close.onclick = closeReplay;
