@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1012_GAME_SCREEN_NO_SCROLL_STYLE */
 /* BUILD_CHECK: V1010_MOBILE_HOME_SCROLL_FIX_STYLE */
 /* BUILD_CHECK: V1009_TIEBREAK_EXPLANATION_STYLE */
 /* BUILD_CHECK: V1008_MATCH_LENGTH_STYLE */
@@ -1622,5 +1623,27 @@ input, button {
 
   .startScreen {
     max-width: min(360px, calc(100vw - 20px));
+  }
+}
+
+
+
+/* v1.0.12 restore one-screen gameplay on mobile */
+@media (max-width: 640px) {
+  html, body {
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+
+  #app {
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .screen {
+    margin: 12px auto !important;
+    padding-bottom: 10px !important;
   }
 }
