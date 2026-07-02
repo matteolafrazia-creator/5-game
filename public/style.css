@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1008_MATCH_LENGTH_STYLE */
 /* BUILD_CHECK: V0989_CUSTOM_PODIUM_ICONS_STYLE */
 /* BUILD_CHECK: V0988_REPLAY_NATIVE_DESKTOP_CSS_FIX_STYLE */
 /* BUILD_CHECK: V0986_BRAND_LOGO_PISTACHIO_STYLE */
@@ -1476,4 +1477,67 @@ input, button {
   .replayTableCard {
     max-width: min(9.5vw, 34px) !important;
   }
+}
+
+
+
+/* v1.0.8 match length selector */
+.matchLengthBox {
+  width: calc(100% - 16px);
+  margin: 10px auto 8px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,213,79,0.35);
+  text-align: left;
+}
+
+.matchLengthTitle {
+  color: #ffd54f;
+  font-weight: bold;
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.matchLengthOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin: 5px 0;
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(0,0,0,0.16);
+  border: 1px solid transparent;
+  color: #fff;
+}
+
+.matchLengthOption.selected {
+  border-color: #ffd54f;
+  background: rgba(255,213,79,0.18);
+  box-shadow: 0 0 10px rgba(255,213,79,0.22);
+}
+
+.matchLengthOption input {
+  margin: 0;
+  width: auto;
+}
+
+.matchLengthOption span {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  gap: 8px;
+}
+
+.matchLengthOption strong {
+  font-size: 14px;
+}
+
+.matchLengthOption small {
+  color: #ffe082;
+  font-size: 12px;
+  white-space: nowrap;
 }

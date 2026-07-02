@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1008_MATCH_LENGTH_SERVER */
 /* BUILD_CHECK: V1007_TIEBREAK_WINS_PLACEMENTS_SERVER */
 /* BUILD_CHECK: V1005_REAL_DISCONNECT_REJOIN_FEED_SERVER */
 /* BUILD_CHECK: V1004_REJOIN_MESSAGE_ONLY_AFTER_DISCONNECT_SERVER */
@@ -29,9 +30,20 @@ function createEmptyTable() {
   };
 }
 
-function createRoom(code) {
+function createRoom(code, options = {}) {
+  const matchLength = [5, 10, 20].includes(Number(options.matchLength))
+    ? Number(options.matchLength)
+    : 10;
+
+  const matchMode =
+    matchLength === 5 ? "quick" :
+    matchLength === 20 ? "marathon" :
+    "classic";
+
   return {
     code,
+    matchMode,
+    matchLength,
     players: [],
     gameState: "WAITING",
     dealerIndex: null,
@@ -158,6 +170,8 @@ function broadcast(room) {
       gameState: room.gameState,
       playersCount: room.players.length,
       handNumber: room.handNumber,
+      matchLength: room.matchLength || 10,
+      matchMode: room.matchMode || "classic",
       players: room.players.map(x => ({
         id: x.id,
         name: x.name,
@@ -213,7 +227,7 @@ function startSetup(room) {
     p.readyNext = false;
   });
 
-  room.message = `Mano ${room.handNumber}/10. ${room.players[room.dealerIndex].name} deve scegliere il seme.`;
+  room.message = `Mano ${room.handNumber}/${room.matchLength || 10}. ${room.players[room.dealerIndex].name} deve scegliere il seme.`;
   broadcast(room);
 }
 
@@ -313,13 +327,13 @@ function finishHand(room, winner) {
   room.handResult = {
     winnerName: winner.name,
     scores,
-    showStandings: room.handNumber === 5 || room.handNumber === 10,
-    final: room.handNumber === 10,
+    showStandings: room.handNumber === Math.ceil((room.matchLength || 10) / 2) || room.handNumber === (room.matchLength || 10),
+    final: room.handNumber === (room.matchLength || 10),
     replay: [...room.currentHandActions],
-    matchDurationMinutes: room.handNumber === 10 ? matchDurationMinutes : null
+    matchDurationMinutes: room.handNumber === (room.matchLength || 10) ? matchDurationMinutes : null
   };
 
-  room.gameState = room.handNumber === 10 ? "GAME_OVER" : "HAND_OVER";
+  room.gameState = room.handNumber === (room.matchLength || 10) ? "GAME_OVER" : "HAND_OVER";
   room.message = `${winner.name} ha vinto la mano ${room.handNumber}.`;
 }
 
@@ -590,7 +604,7 @@ wss.on("connection", (ws) => {
 
     if (data.type === "createRoom") {
       const code = generateRoomCode();
-      const room = createRoom(code);
+      const room = createRoom(code, { matchLength: data.matchLength });
       rooms.set(code, room);
       joinRoom(ws, room, data);
       return;
@@ -710,5 +724,5 @@ wss.on("connection", (ws) => {
 });
 
 server.listen(process.env.PORT || 10000, () => {
-  console.log("Gioco 5 v1.0.7 tiebreak rules online");
+  console.log("Gioco 5 v1.0.8 match length options online");
 });

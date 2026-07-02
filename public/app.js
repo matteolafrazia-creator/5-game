@@ -1,3 +1,5 @@
+/* BUILD_CHECK: V1008_MATCH_LENGTH_APP */
+console.log("BUILD_CHECK V1008_MATCH_LENGTH loaded");
 /* BUILD_CHECK: V1006_PASS_CONFIRM_TOAST_APP */
 console.log("BUILD_CHECK V1006_PASS_CONFIRM_TOAST loaded");
 /* BUILD_CHECK: V1003_SYNC_STATE_ON_RESUME_APP */
@@ -396,6 +398,34 @@ function renderStart() {
 
       <input id="nameInput" placeholder="Nome giocatore" value="${savedName}" />
 
+      <div class="matchLengthBox">
+        <div class="matchLengthTitle">Durata partita</div>
+
+        <label class="matchLengthOption">
+          <input type="radio" name="matchLength" value="5" />
+          <span>
+            <strong>Partita veloce</strong>
+            <small>5 mani</small>
+          </span>
+        </label>
+
+        <label class="matchLengthOption selected">
+          <input type="radio" name="matchLength" value="10" checked />
+          <span>
+            <strong>Classica</strong>
+            <small>10 mani</small>
+          </span>
+        </label>
+
+        <label class="matchLengthOption">
+          <input type="radio" name="matchLength" value="20" />
+          <span>
+            <strong>Maratona</strong>
+            <small>20 mani</small>
+          </span>
+        </label>
+      </div>
+
       <button id="createBtn">Crea partita</button>
 
       <div class="joinBox">
@@ -405,7 +435,7 @@ function renderStart() {
 
       <button id="rulesBtn" class="rulesBtn">❓ Come si gioca?</button>
 
-      <div class="betaLabel">Beta v0.9.8.6</div>
+      <div class="betaLabel">Beta v1.0.8</div>
     </div>
   `;
 
@@ -417,10 +447,13 @@ function renderStart() {
     ignoringOldRoomCode = null;
     joined = true;
 
+    const matchLength = getSelectedMatchLength();
+
     ws.send(JSON.stringify({
       type: "createRoom",
       playerId: localStorage.getItem("five_player_id"),
-      name
+      name,
+      matchLength
     }));
   };
 
@@ -448,9 +481,32 @@ function renderStart() {
     }));
   };
 
+  setupMatchLengthSelector();
+
   byId("rulesBtn").onclick = () => {
     renderRulesOverlay();
   };
+}
+
+function getSelectedMatchLength() {
+  const selected = document.querySelector('input[name="matchLength"]:checked');
+  const value = Number(selected?.value || 10);
+  return [5, 10, 20].includes(value) ? value : 10;
+}
+
+function setupMatchLengthSelector() {
+  document.querySelectorAll(".matchLengthOption").forEach(option => {
+    const input = option.querySelector('input[name="matchLength"]');
+    if (!input) return;
+
+    option.onclick = () => {
+      input.checked = true;
+
+      document.querySelectorAll(".matchLengthOption").forEach(el => {
+        el.classList.toggle("selected", el === option);
+      });
+    };
+  });
 }
 
 function getName() {
@@ -687,7 +743,7 @@ function renderHeader() {
 
   div.innerHTML = `
     <button id="topExitBtn" class="topExitBtn">Esci</button>
-    <h2>5 · Mano ${state.handNumber || 1}/10</h2>
+    <h2>5 · Mano ${state.handNumber || 1}/${state.matchLength || 10}</h2>
     <div class="roomCode">
       Codice: <strong>${state.roomCode}</strong>
       <button id="copyCodeBtn" class="miniBtn">Copia</button>
@@ -1423,9 +1479,9 @@ function renderRulesOverlay() {
       <section>
         <h3>Fine della partita</h3>
         <ul>
-          <li>La partita è composta da <strong>10 mani</strong>.</li>
-          <li>Dopo la <strong>5ª mano</strong> viene mostrata la classifica provvisoria.</li>
-          <li>Dopo la <strong>10ª mano</strong> viene mostrata la classifica finale.</li>
+          <li>La partita può essere <strong>veloce</strong> (5 mani), <strong>classica</strong> (10 mani) o <strong>maratona</strong> (20 mani).</li>
+          <li>A metà partita viene mostrata la classifica provvisoria.</li>
+          <li>All’ultima mano viene mostrata la classifica finale.</li>
           <li>Vince il giocatore con il <strong>minor numero di punti</strong>.</li>
         </ul>
       </section>
