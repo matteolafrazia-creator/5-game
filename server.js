@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1004_REJOIN_MESSAGE_ONLY_AFTER_DISCONNECT_SERVER */
 /* BUILD_CHECK: V1003_SYNC_STATE_ON_RESUME_SERVER */
 /* BUILD_CHECK: V0985_SERVER_ROOM_CLOSE_TIMER_FIX */
 const http = require("http");
@@ -425,6 +426,8 @@ function joinRoom(ws, room, data) {
   }
 
   if (player) {
+    const wasDisconnected = !player.connected;
+
     if (player.reconnectTimer) {
       clearTimeout(player.reconnectTimer);
       player.reconnectTimer = null;
@@ -445,7 +448,12 @@ function joinRoom(ws, room, data) {
       return;
     }
 
-    room.message = `${player.name} è rientrato.`;
+    // Show "è rientrato" only after a real disconnection.
+    // Silent sync/rejoin calls from mobile resume must not overwrite the feed.
+    if (wasDisconnected) {
+      room.message = `${player.name} è rientrato.`;
+    }
+
     broadcast(room);
     return;
   }
