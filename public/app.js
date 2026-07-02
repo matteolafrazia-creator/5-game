@@ -1,3 +1,5 @@
+/* BUILD_CHECK: V1002_RESUME_NO_FAKE_REJOIN_APP */
+console.log("BUILD_CHECK V1002_RESUME_NO_FAKE_REJOIN loaded");
 /* BUILD_CHECK: V1001_WEBSOCKET_RECONNECT_MANAGER_APP */
 console.log("BUILD_CHECK V1001_WEBSOCKET_RECONNECT_MANAGER loaded");
 /* BUILD_CHECK: V0991_MOBILE_RESUME_RECONNECT_FIX_APP */
@@ -253,7 +255,8 @@ function handleAppResume(reason = "resume") {
   lastResumeJoinAt = now;
 
   if (ws && ws.readyState === WebSocket.OPEN) {
-    sendJoinSavedRoom();
+    // Socket still alive: do not send joinRoom again.
+    // This avoids fake "è rientrato" messages when the player was never offline.
     return;
   }
 
