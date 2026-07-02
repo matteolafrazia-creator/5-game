@@ -324,16 +324,23 @@ function finishHand(room, winner) {
     };
   });
 
+  const matchLength = room.matchLength || 10;
+  const isFinalHand = room.handNumber === matchLength;
+  const isPartialStanding =
+    !isFinalHand &&
+    matchLength > 5 &&
+    room.handNumber % 5 === 0;
+
   room.handResult = {
     winnerName: winner.name,
     scores,
-    showStandings: room.handNumber === Math.ceil((room.matchLength || 10) / 2) || room.handNumber === (room.matchLength || 10),
-    final: room.handNumber === (room.matchLength || 10),
+    showStandings: isPartialStanding || isFinalHand,
+    final: isFinalHand,
     replay: [...room.currentHandActions],
-    matchDurationMinutes: room.handNumber === (room.matchLength || 10) ? matchDurationMinutes : null
+    matchDurationMinutes: isFinalHand ? matchDurationMinutes : null
   };
 
-  room.gameState = room.handNumber === (room.matchLength || 10) ? "GAME_OVER" : "HAND_OVER";
+  room.gameState = isFinalHand ? "GAME_OVER" : "HAND_OVER";
   room.message = `${winner.name} ha vinto la mano ${room.handNumber}.`;
 }
 
