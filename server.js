@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1003_SYNC_STATE_ON_RESUME_SERVER */
 /* BUILD_CHECK: V0985_SERVER_ROOM_CLOSE_TIMER_FIX */
 const http = require("http");
 const express = require("express");
@@ -81,6 +82,50 @@ function standings(room) {
   return [...room.players]
     .map(p => ({ name: p.name, total: p.totalScore || 0 }))
     .sort((a, b) => a.total - b.total);
+}
+
+
+function sendStateToPlayer(room, playerIndex) {
+  const p = room.players[playerIndex];
+  if (!p || !p.ws || p.ws.readyState !== WebSocket.OPEN) return;
+
+  const passNotice =
+    room.lastPassNotice &&
+    room.gameState === "IN_GAME" &&
+    room.lastPassNotice.toIndex === playerIndex
+      ? { fromName: room.lastPassNotice.fromName }
+      : null;
+
+  p.ws.send(JSON.stringify({
+    type: "state",
+    roomCode: room.code,
+    gameState: room.gameState,
+    playersCount: room.players.length,
+    handNumber: room.handNumber,
+    players: room.players.map(x => ({
+      id: x.id,
+      name: x.name,
+      cards: x.hand.length,
+      connected: x.connected,
+      totalScore: x.totalScore || 0,
+      readyNext: !!x.readyNext
+    })),
+    yourIndex: playerIndex,
+    yourId: p.id,
+    dealerIndex: room.dealerIndex,
+    chosenSuit: room.chosenSuit,
+    starterIndex: room.starterIndex,
+    turn: room.turn,
+    yourTurn: room.gameState === "IN_GAME" && room.turn === playerIndex,
+    openingFiveRequired: room.openingFiveRequired,
+    passNotice,
+    hand: p.hand,
+    table: room.table,
+    message: room.message,
+    lastCard: room.lastCard,
+    handResult: room.handResult,
+    standings: standings(room)
+  }));
 }
 
 function broadcast(room) {
@@ -511,6 +556,11 @@ wss.on("connection", (ws) => {
 
     const { room, playerIndex } = getRoomAndPlayer(ws);
     if (!room || playerIndex === -1) return;
+
+    if (data.type === "syncState") {
+      sendStateToPlayer(room, playerIndex);
+      return;
+    }
 
     if (data.type === "chooseSuit") {
       if (room.gameState !== "PICK_SUIT") return;

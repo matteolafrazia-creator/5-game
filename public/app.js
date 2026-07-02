@@ -1,3 +1,5 @@
+/* BUILD_CHECK: V1003_SYNC_STATE_ON_RESUME_APP */
+console.log("BUILD_CHECK V1003_SYNC_STATE_ON_RESUME loaded");
 /* BUILD_CHECK: V1002_RESUME_NO_FAKE_REJOIN_APP */
 console.log("BUILD_CHECK V1002_RESUME_NO_FAKE_REJOIN loaded");
 /* BUILD_CHECK: V1001_WEBSOCKET_RECONNECT_MANAGER_APP */
@@ -255,8 +257,9 @@ function handleAppResume(reason = "resume") {
   lastResumeJoinAt = now;
 
   if (ws && ws.readyState === WebSocket.OPEN) {
-    // Socket still alive: do not send joinRoom again.
-    // This avoids fake "è rientrato" messages when the player was never offline.
+    // Socket still alive: request a silent state refresh without triggering
+    // fake "è rientrato" messages on the server.
+    ws.send(JSON.stringify({ type: "syncState" }));
     return;
   }
 
