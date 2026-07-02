@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1009_TIEBREAK_EXPLANATION_STYLE */
 /* BUILD_CHECK: V1008_MATCH_LENGTH_STYLE */
 /* BUILD_CHECK: V0989_CUSTOM_PODIUM_ICONS_STYLE */
 /* BUILD_CHECK: V0988_REPLAY_NATIVE_DESKTOP_CSS_FIX_STYLE */
@@ -1540,4 +1541,60 @@ input, button {
   color: #ffe082;
   font-size: 12px;
   white-space: nowrap;
+}
+
+
+
+/* v1.0.9 tiebreak explanation */
+.standingsWithStats {
+  padding-left: 0 !important;
+}
+
+.standingRow {
+  display: grid !important;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.standingPlayer {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.standingStat {
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.tiebreakBox {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 213, 79, 0.18);
+  border: 1px solid rgba(184, 134, 11, 0.35);
+  text-align: left;
+}
+
+.tiebreakBox h3 {
+  margin: 0 0 6px;
+  color: #b8860b;
+}
+
+.tiebreakBox p {
+  margin: 0;
+  line-height: 1.35;
+  font-size: 14px;
+}
+
+@media (max-width: 420px) {
+  .standingRow {
+    grid-template-columns: 1fr auto;
+  }
+
+  .standingRow .standingStat:last-child {
+    grid-column: 2;
+  }
 }

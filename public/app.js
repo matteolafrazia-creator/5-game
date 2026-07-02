@@ -1,3 +1,5 @@
+/* BUILD_CHECK: V1009_TIEBREAK_EXPLANATION_APP */
+console.log("BUILD_CHECK V1009_TIEBREAK_EXPLANATION loaded");
 /* BUILD_CHECK: V1008_MATCH_LENGTH_APP */
 console.log("BUILD_CHECK V1008_MATCH_LENGTH loaded");
 /* BUILD_CHECK: V1006_PASS_CONFIRM_TOAST_APP */
@@ -435,7 +437,7 @@ function renderStart() {
 
       <button id="rulesBtn" class="rulesBtn">❓ Come si gioca?</button>
 
-      <div class="betaLabel">Beta v1.0.8</div>
+      <div class="betaLabel">Beta v1.0.9</div>
     </div>
   `;
 
@@ -1004,6 +1006,31 @@ function renderSuitOverlay() {
   }
 }
 
+
+function renderStandingRow(s, index) {
+  const wins = s.wins || 0;
+
+  return `
+    <li class="standingRow">
+      <span class="standingPlayer">${podiumIcon(index)} ${s.name}</span>
+      <span class="standingStat"><strong>${s.total}</strong> pt</span>
+      <span class="standingStat"><strong>${wins}</strong> vittorie</span>
+    </li>
+  `;
+}
+
+function renderTiebreakBox() {
+  const info = state.handResult?.tiebreakInfo;
+  if (!info) return "";
+
+  return `
+    <div class="tiebreakBox">
+      <h3>${info.title || "Spareggio"}</h3>
+      <p>${info.text}</p>
+    </div>
+  `;
+}
+
 function renderEndOverlay() {
   if (!["HAND_OVER", "GAME_OVER"].includes(state.gameState) || !state.handResult) return;
   if (replayRunning) return;
@@ -1020,9 +1047,14 @@ function renderEndOverlay() {
     .map(s => `<li>${s.name}: ${s.points} punti</li>`)
     .join("");
 
+  const standingsTitle = state.handResult.final
+    ? "🏁 Classifica finale"
+    : `⏱️ Classifica parziale dopo ${state.handNumber} mani`;
+
   const standings = state.handResult.showStandings
-    ? `<h3>${state.handResult.final ? "🏁 Classifica finale" : "⏱️ Classifica parziale dopo 5 mani"}</h3>
-       <ol class="standingsList">${state.standings.map((s, index) => `<li><span>${podiumIcon(index)} ${s.name}</span><strong>${s.total} pt</strong></li>`).join("")}</ol>`
+    ? `<h3>${standingsTitle}</h3>
+       <ol class="standingsList standingsWithStats">${state.standings.map((s, index) => renderStandingRow(s, index)).join("")}</ol>
+       ${renderTiebreakBox()}`
     : "";
 
   const durationBox = state.gameState === "GAME_OVER" && state.handResult.matchDurationMinutes
@@ -1483,6 +1515,9 @@ function renderRulesOverlay() {
           <li>A metà partita viene mostrata la classifica provvisoria.</li>
           <li>All’ultima mano viene mostrata la classifica finale.</li>
           <li>Vince il giocatore con il <strong>minor numero di punti</strong>.</li>
+          <li>In caso di parità di punti, vince chi ha ottenuto <strong>più vittorie di mano</strong>.</li>
+          <li>Se anche le vittorie sono pari, vince chi ha ottenuto <strong>migliori piazzamenti</strong> durante l’intera partita.</li>
+          <li>Se anche questo criterio è pari, i giocatori restano in <strong>pari merito</strong>.</li>
         </ul>
       </section>
 

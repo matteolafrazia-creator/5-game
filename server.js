@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1009_TIEBREAK_EXPLANATION_SERVER */
 /* BUILD_CHECK: V1008_MATCH_LENGTH_SERVER */
 /* BUILD_CHECK: V1007_TIEBREAK_WINS_PLACEMENTS_SERVER */
 /* BUILD_CHECK: V1005_REAL_DISCONNECT_REJOIN_FEED_SERVER */
@@ -107,6 +108,56 @@ function standings(room) {
       (a.placementScore - b.placementScore) ||
       a.name.localeCompare(b.name)
     );
+}
+
+
+function buildTiebreakInfo(finalStandings) {
+  if (!finalStandings || finalStandings.length < 2) return null;
+
+  const tiedByPoints = new Map();
+
+  finalStandings.forEach(player => {
+    const key = String(player.total);
+    if (!tiedByPoints.has(key)) tiedByPoints.set(key, []);
+    tiedByPoints.get(key).push(player);
+  });
+
+  const tiedGroups = [...tiedByPoints.values()]
+    .filter(group => group.length > 1)
+    .sort((a, b) => a[0].total - b[0].total);
+
+  if (!tiedGroups.length) return null;
+
+  const group = tiedGroups[0];
+  const order = finalStandings.map(p => p.name);
+  const sortedGroup = [...group].sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+
+  const winner = sortedGroup[0];
+  const challenger = sortedGroup[1];
+
+  if (!winner || !challenger) return null;
+
+  if ((winner.wins || 0) !== (challenger.wins || 0)) {
+    return {
+      type: "wins",
+      title: "Spareggio deciso dalle vittorie",
+      text: `${winner.name} e ${challenger.name} hanno concluso con ${winner.total} punti. Vince ${winner.name} perché ha ottenuto ${winner.wins || 0} vittorie, contro le ${challenger.wins || 0} di ${challenger.name}.`
+    };
+  }
+
+  if ((winner.placementScore || 0) !== (challenger.placementScore || 0)) {
+    return {
+      type: "placements",
+      title: "Spareggio deciso dai piazzamenti",
+      text: `${winner.name} e ${challenger.name} hanno concluso con ${winner.total} punti e ${winner.wins || 0} vittorie. Vince ${winner.name} grazie ai migliori piazzamenti ottenuti durante la partita.`
+    };
+  }
+
+  return {
+    type: "draw",
+    title: "Pari merito",
+    text: `${winner.name} e ${challenger.name} hanno concluso con ${winner.total} punti, lo stesso numero di vittorie e piazzamenti equivalenti.`
+  };
 }
 
 
@@ -331,13 +382,16 @@ function finishHand(room, winner) {
     matchLength > 5 &&
     room.handNumber % 5 === 0;
 
+  const finalStandings = standings(room);
+
   room.handResult = {
     winnerName: winner.name,
     scores,
     showStandings: isPartialStanding || isFinalHand,
     final: isFinalHand,
     replay: [...room.currentHandActions],
-    matchDurationMinutes: isFinalHand ? matchDurationMinutes : null
+    matchDurationMinutes: isFinalHand ? matchDurationMinutes : null,
+    tiebreakInfo: isFinalHand ? buildTiebreakInfo(finalStandings) : null
   };
 
   room.gameState = isFinalHand ? "GAME_OVER" : "HAND_OVER";
@@ -731,5 +785,5 @@ wss.on("connection", (ws) => {
 });
 
 server.listen(process.env.PORT || 10000, () => {
-  console.log("Gioco 5 v1.0.8 match length options online");
+  console.log("Gioco 5 v1.0.9 tiebreak explanation online");
 });
