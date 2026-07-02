@@ -177,17 +177,13 @@ function getSavedSession() {
   };
 }
 
-function forceResumeReload(reason = "resume") {
+function forceResumeReload() {
   if (resumeReloadScheduled) return;
 
   resumeReloadScheduled = true;
-  showSmallToast("Riconnessione...");
-
-  setTimeout(() => {
-    const url = new URL(location.href);
-    url.searchParams.set("resume", Date.now().toString());
-    location.replace(url.toString());
-  }, 350);
+  const url = new URL(location.href);
+  url.searchParams.set("resume", Date.now().toString());
+  location.replace(url.toString());
 }
 
 function handleAppResume(reason = "resume") {
@@ -210,21 +206,17 @@ function handleAppResume(reason = "resume") {
         roomCode: savedRoom
       }));
     } catch {
-      forceResumeReload(reason);
+      forceResumeReload();
     }
     return;
   }
 
   if (ws.readyState === WebSocket.CONNECTING) {
-    setTimeout(() => {
-      if (ws.readyState !== WebSocket.OPEN) {
-        forceResumeReload(reason);
-      }
-    }, 900);
+    forceResumeReload();
     return;
   }
 
-  forceResumeReload(reason);
+  forceResumeReload();
 }
 
 
