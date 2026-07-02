@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1007_TIEBREAK_WINS_PLACEMENTS_SERVER */
 /* BUILD_CHECK: V1005_REAL_DISCONNECT_REJOIN_FEED_SERVER */
 /* BUILD_CHECK: V1004_REJOIN_MESSAGE_ONLY_AFTER_DISCONNECT_SERVER */
 /* BUILD_CHECK: V1003_SYNC_STATE_ON_RESUME_SERVER */
@@ -82,8 +83,18 @@ function sortHand(hand) {
 
 function standings(room) {
   return [...room.players]
-    .map(p => ({ name: p.name, total: p.totalScore || 0 }))
-    .sort((a, b) => a.total - b.total);
+    .map(p => ({
+      name: p.name,
+      total: p.totalScore || 0,
+      wins: p.handWins || 0,
+      placementScore: p.placementScore || 0
+    }))
+    .sort((a, b) =>
+      (a.total - b.total) ||
+      (b.wins - a.wins) ||
+      (a.placementScore - b.placementScore) ||
+      a.name.localeCompare(b.name)
+    );
 }
 
 
@@ -153,6 +164,8 @@ function broadcast(room) {
         cards: x.hand.length,
         connected: x.connected,
         totalScore: x.totalScore || 0,
+        wins: x.handWins || 0,
+        placementScore: x.placementScore || 0,
         readyNext: !!x.readyNext
       })),
       yourIndex: i,
@@ -263,11 +276,38 @@ function finishHand(room, winner) {
     ? Math.max(1, Math.round((Date.now() - room.matchStartedAt) / 60000))
     : 0;
 
+  const handScores = room.players.map(p => ({
+    player: p,
+    name: p.name,
+    points: p === winner ? 0 : p.hand.length
+  }));
+
+  handScores
+    .sort((a, b) => a.points - b.points)
+    .forEach((entry, index, sorted) => {
+      const placement = index > 0 && entry.points === sorted[index - 1].points
+        ? sorted[index - 1].placement
+        : index + 1;
+
+      entry.placement = placement;
+      entry.player.placementScore = (entry.player.placementScore || 0) + placement;
+
+      if (entry.player === winner) {
+        entry.player.handWins = (entry.player.handWins || 0) + 1;
+      }
+    });
+
   const scores = room.players.map(p => {
-    const points = p === winner ? 0 : p.hand.length;
-    p.totalScore = (p.totalScore || 0) + points;
+    const entry = handScores.find(s => s.player === p);
+    p.totalScore = (p.totalScore || 0) + entry.points;
     p.readyNext = false;
-    return { name: p.name, points };
+
+    return {
+      name: p.name,
+      points: entry.points,
+      placement: entry.placement,
+      wins: p.handWins || 0
+    };
   });
 
   room.handResult = {
@@ -355,6 +395,8 @@ function resetMatch(room) {
   room.players.forEach(p => {
     p.hand = [];
     p.totalScore = 0;
+    p.handWins = 0;
+    p.placementScore = 0;
     p.readyNext = false;
   });
 
@@ -482,6 +524,8 @@ function joinRoom(ws, room, data) {
     hand: [],
     connected: true,
     totalScore: 0,
+    handWins: 0,
+    placementScore: 0,
     readyNext: false,
     reconnectTimer: null
   };
@@ -666,5 +710,5 @@ wss.on("connection", (ws) => {
 });
 
 server.listen(process.env.PORT || 10000, () => {
-  console.log("Gioco 5 v0.9.3-beta playtest fixes online");
+  console.log("Gioco 5 v1.0.7 tiebreak rules online");
 });
