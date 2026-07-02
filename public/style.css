@@ -708,7 +708,7 @@ input, button {
 .replayStep {
   min-height: 28px;
   font-weight: bold;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .replayCardBox {
@@ -1316,8 +1316,8 @@ input, button {
 
 /* v0.9.8.6 brand update: home logo + pistachio rank */
 .homeLogo {
-  width: min(260px, 68vw);
-  max-height: 260px;
+  width: min(225px, 60vw);
+  max-height: 225px;
   object-fit: contain;
   border-radius: 18px;
   box-shadow: 0 14px 34px rgba(0,0,0,0.38);
@@ -1329,7 +1329,7 @@ input, button {
   font-weight: 800;
   color: #f5d889;
   text-align: center;
-  margin: 8px 0 22px;
+  margin: 6px 0 16px;
   letter-spacing: 0.2px;
 }
 
@@ -1348,14 +1348,14 @@ input, button {
 
 @media (max-width: 700px) {
   .homeLogo {
-    width: min(220px, 72vw);
-    max-height: 220px;
+    width: min(190px, 64vw);
+    max-height: 190px;
     border-radius: 14px;
   }
 
   .homeClaim {
     font-size: 21px;
-    margin-bottom: 18px;
+    margin-bottom: 12px;
   }
 
   .podiumIcon {
