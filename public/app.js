@@ -1072,28 +1072,10 @@ function renderFinalCardNotice() {
 
 
 function podiumIcon(index) {
-  if (index === 0) {
-    return '<img class="podiumIcon" src="assets/medaglia-oro.png" alt="1° posto">';
-  }
-
-  if (index === 1) {
-    return '<img class="podiumIcon" src="assets/medaglia-argento.png" alt="2° posto">';
-  }
-
-  if (index === 2) {
-    return '<img class="podiumIcon" src="assets/medaglia-bronzo.png" alt="3° posto">';
-  }
-
-  if (index === 3) {
-    return '<img class="podiumIcon" src="assets/pistacchio-4.png" alt="4° posto">';
-  }
-
-  return "";
-}
-  if (index === 0) return "🥇";
-  if (index === 1) return "🥈";
-  if (index === 2) return "🥉";
-  if (index === 3) return '<img class="pistachioRankIcon" src="assets/pistacchio-4.png" alt="Pistacchio" />';
+  if (index === 0) return '<img class="podiumIcon" src="assets/medaglia-oro.png" alt="1° posto">';
+  if (index === 1) return '<img class="podiumIcon" src="assets/medaglia-argento.png" alt="2° posto">';
+  if (index === 2) return '<img class="podiumIcon" src="assets/medaglia-bronzo.png" alt="3° posto">';
+  if (index === 3) return '<img class="podiumIcon" src="assets/pistacchio-4.png" alt="4° posto">';
   return "";
 }
 
