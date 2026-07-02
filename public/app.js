@@ -1,3 +1,5 @@
+/* BUILD_CHECK: V1006_PASS_CONFIRM_TOAST_APP */
+console.log("BUILD_CHECK V1006_PASS_CONFIRM_TOAST loaded");
 /* BUILD_CHECK: V1003_SYNC_STATE_ON_RESUME_APP */
 console.log("BUILD_CHECK V1003_SYNC_STATE_ON_RESUME loaded");
 /* BUILD_CHECK: V1002_RESUME_NO_FAKE_REJOIN_APP */
@@ -49,6 +51,7 @@ let ignoreMessagesAfterLeave = false;
 let ignoringOldRoomCode = null;
 let resumeReloadScheduled = false;
 let lastResumeJoinAt = 0;
+let pendingPassConfirmation = false;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
@@ -139,6 +142,25 @@ function handleSocketMessage(event) {
     updateGameplayInPlace(previousState);
   } else {
     render();
+  }
+
+  if (pendingPassConfirmation) {
+    const passRejected =
+      state.yourTurn &&
+      state.message &&
+      (
+        state.message.includes("Non puoi passare") ||
+        state.message.includes("devi giocare il 5")
+      );
+
+    const passAccepted = wasMyTurn && !state.yourTurn;
+
+    if (passAccepted) {
+      pendingPassConfirmation = false;
+      showSmallToast("✅ Hai passato");
+    } else if (passRejected) {
+      pendingPassConfirmation = false;
+    }
   }
 
   if (!wasMyTurn && state.yourTurn) {
@@ -874,7 +896,10 @@ function renderActions() {
   if (state.gameState === "IN_GAME") {
     const pass = document.createElement("button");
     pass.innerText = "Passo";
-    pass.onclick = () => ws.send(JSON.stringify({ type: "pass" }));
+    pass.onclick = () => {
+      pendingPassConfirmation = true;
+      ws.send(JSON.stringify({ type: "pass" }));
+    };
     div.appendChild(pass);
   }
 
