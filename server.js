@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1005_REAL_DISCONNECT_REJOIN_FEED_SERVER */
 /* BUILD_CHECK: V1004_REJOIN_MESSAGE_ONLY_AFTER_DISCONNECT_SERVER */
 /* BUILD_CHECK: V1003_SYNC_STATE_ON_RESUME_SERVER */
 /* BUILD_CHECK: V0985_SERVER_ROOM_CLOSE_TIMER_FIX */
@@ -426,7 +427,10 @@ function joinRoom(ws, room, data) {
   }
 
   if (player) {
-    const wasDisconnected = !player.connected;
+    const oldWs = player.ws;
+    const hadReconnectTimer = !!player.reconnectTimer;
+    const oldSocketNotOpen = !oldWs || oldWs.readyState !== WebSocket.OPEN;
+    const wasDisconnected = !player.connected || hadReconnectTimer || oldSocketNotOpen;
 
     if (player.reconnectTimer) {
       clearTimeout(player.reconnectTimer);
@@ -448,8 +452,11 @@ function joinRoom(ws, room, data) {
       return;
     }
 
-    // Show "è rientrato" only after a real disconnection.
-    // Silent sync/rejoin calls from mobile resume must not overwrite the feed.
+    // Show "è rientrato" only after a real disconnection:
+    // - player was marked offline
+    // - reconnect timer was active
+    // - previous socket was missing/closed
+    // Normal mobile resume with the same open socket must stay silent.
     if (wasDisconnected) {
       room.message = `${player.name} è rientrato.`;
     }
