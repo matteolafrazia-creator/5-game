@@ -1,5 +1,6 @@
-/* BUILD_CHECK: V0991_MOBILE_RESUME_RECONNECT_FIX_APP */
-console.log("BUILD_CHECK V0991_MOBILE_RESUME_RECONNECT_FIX loaded");
+/* BUILD_CHECK: V1000_WEBSOCKET_MANAGER_APP */
+console.log("BUILD_CHECK V1000_WEBSOCKET_MANAGER loaded");
+/* BUILD_CHECK: V0990_CUSTOM_PODIUM_ICONS_APP_FIX */
 /* BUILD_CHECK: V0986_BRAND_LOGO_PISTACHIO_APP */
 console.log("BUILD_CHECK V0986_BRAND_LOGO_PISTACHIO loaded");
 /* BUILD_CHECK: V0984_LEFT_ROOM_BLOCKLIST_FIX_APP */
@@ -23,7 +24,55 @@ function byId(id) {
   return document.getElementById(id);
 }
 
-const ws = new WebSocket(location.origin.replace("http", "ws"));
+let ws = null;
+let reconnectingWebSocket = false;
+
+function getWebSocketUrl() {
+  return location.origin.replace("http", "ws");
+}
+
+function connectWebSocket({ reconnect = false } = {}) {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  reconnectingWebSocket = reconnect;
+  ws = new WebSocket(getWebSocketUrl());
+  attachWebSocketHandlers();
+}
+
+function sendMessage(payload) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    handleAppResume("send-not-open");
+    return false;
+  }
+
+  ws.send(JSON.stringify(payload));
+  return true;
+}
+
+function autoJoinSavedRoom() {
+  const savedId = localStorage.getItem("five_player_id");
+  const savedName = localStorage.getItem("five_player_name");
+  const savedRoom = localStorage.getItem("five_room_code");
+
+  if (savedId && savedName && savedRoom) {
+    joined = true;
+    sendMessage({
+      type: "joinRoom",
+      playerId: savedId,
+      name: savedName,
+      roomCode: savedRoom
+    });
+    return true;
+  }
+
+  return false;
+}
+
+connectWebSocket();
+
+function attachWebSocketHandlers() {
 
 let state = null;
 let joined = false;
@@ -36,8 +85,6 @@ let endOverlayTimer = null;
 const blockedRoomCodes = new Set();
 let ignoreMessagesAfterLeave = false;
 let ignoringOldRoomCode = null;
-let resumeReloadScheduled = false;
-let lastResumeJoinAt = 0;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
@@ -46,21 +93,11 @@ const VERTICAL_SLOTS = ["R", "C", "F", "7", "6", "5", "4", "3", "2", "A"];
 ws.onopen = () => {
   preloadCardImages();
 
-  const savedId = localStorage.getItem("five_player_id");
-  const savedName = localStorage.getItem("five_player_name");
-  const savedRoom = localStorage.getItem("five_room_code");
-
-  if (savedId && savedName && savedRoom) {
-    joined = true;
-    ws.send(JSON.stringify({
-      type: "joinRoom",
-      playerId: savedId,
-      name: savedName,
-      roomCode: savedRoom
-    }));
-  } else {
+  if (!autoJoinSavedRoom()) {
     renderStart();
   }
+
+  reconnectingWebSocket = false;
 };
 
 ws.onmessage = (event) => {
@@ -148,77 +185,59 @@ ws.onmessage = (event) => {
 };
 
 
+  ws.onclose = () => {
+    if (ignoreMessagesAfterLeave) return;
 
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) handleAppResume("visibilitychange");
-});
+    const savedId = localStorage.getItem("five_player_id");
+    const savedName = localStorage.getItem("five_player_name");
+    const savedRoom = localStorage.getItem("five_room_code");
 
-window.addEventListener("focus", () => {
-  handleAppResume("focus");
-});
+    if (savedId && savedName && savedRoom && !document.hidden) {
+      showSmallToast("Connessione persa. Rientro automatico...");
+      setTimeout(() => handleAppResume("socket-close"), 300);
+    }
+  };
 
-window.addEventListener("pageshow", () => {
-  handleAppResume("pageshow");
-});
-
-window.addEventListener("online", () => {
-  handleAppResume("online");
-});
-
-setInterval(() => {
-  if (!document.hidden) handleAppResume("visible-interval");
-}, 5000);
-
-function getSavedSession() {
-  return {
-    savedId: localStorage.getItem("five_player_id"),
-    savedName: localStorage.getItem("five_player_name"),
-    savedRoom: localStorage.getItem("five_room_code")
+  ws.onerror = () => {
+    // Resume/visibility handlers reconnect if needed.
   };
 }
 
-function forceResumeReload() {
-  if (resumeReloadScheduled) return;
 
-  resumeReloadScheduled = true;
-  const url = new URL(location.href);
-  url.searchParams.set("resume", Date.now().toString());
-  location.replace(url.toString());
-}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) handleAppResume();
+});
+
+window.addEventListener("focus", () => {
+  handleAppResume();
+});
 
 function handleAppResume(reason = "resume") {
   if (state?.gameState === "ABORTED") return;
 
-  const { savedId, savedName, savedRoom } = getSavedSession();
+  const savedId = localStorage.getItem("five_player_id");
+  const savedName = localStorage.getItem("five_player_name");
+  const savedRoom = localStorage.getItem("five_room_code");
 
   if (!savedId || !savedName || !savedRoom) return;
 
-  const now = Date.now();
-  if (now - lastResumeJoinAt < 1200) return;
-  lastResumeJoinAt = now;
-
-  if (ws.readyState === WebSocket.OPEN) {
-    try {
-      ws.send(JSON.stringify({
-        type: "joinRoom",
-        playerId: savedId,
-        name: savedName,
-        roomCode: savedRoom
-      }));
-    } catch {
-      forceResumeReload();
-    }
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    sendMessage({
+      type: "joinRoom",
+      playerId: savedId,
+      name: savedName,
+      roomCode: savedRoom
+    });
     return;
   }
 
-  if (ws.readyState === WebSocket.CONNECTING) {
-    forceResumeReload();
+  if (ws && ws.readyState === WebSocket.CONNECTING) {
     return;
   }
 
-  forceResumeReload();
+  showSmallToast("Riconnessione...");
+  connectWebSocket({ reconnect: true });
 }
-
 
 function clearSession() {
   localStorage.removeItem("five_player_id");
@@ -243,7 +262,7 @@ function leaveGame() {
   }
 
   try {
-    ws.send(JSON.stringify({ type: "leaveRoom" }));
+    sendMessage({ type: "leaveRoom" });
   } catch {}
 
   clearSession();
@@ -344,11 +363,11 @@ function renderStart() {
     ignoringOldRoomCode = null;
     joined = true;
 
-    ws.send(JSON.stringify({
+    sendMessage({
       type: "createRoom",
       playerId: localStorage.getItem("five_player_id"),
       name
-    }));
+    });
   };
 
   byId("joinBtn").onclick = () => {
@@ -367,12 +386,12 @@ function renderStart() {
     ignoringOldRoomCode = null;
     joined = true;
 
-    ws.send(JSON.stringify({
+    sendMessage({
       type: "joinRoom",
       playerId: localStorage.getItem("five_player_id"),
       name,
       roomCode
-    }));
+    });
   };
 
   byId("rulesBtn").onclick = () => {
@@ -592,7 +611,7 @@ function updateHandInPlace(previousState) {
         return;
       }
 
-      ws.send(JSON.stringify({ type: "play", index }));
+      sendMessage({ type: "play", index });
     };
 
     hand.appendChild(img);
@@ -807,7 +826,7 @@ function renderHand() {
         return;
       }
 
-      ws.send(JSON.stringify({ type: "play", index }));
+      sendMessage({ type: "play", index });
     };
 
     wrap.appendChild(img);
@@ -823,7 +842,7 @@ function renderActions() {
   if (state.gameState === "IN_GAME") {
     const pass = document.createElement("button");
     pass.innerText = "Passo";
-    pass.onclick = () => ws.send(JSON.stringify({ type: "pass" }));
+    pass.onclick = () => sendMessage({ type: "pass" });
     div.appendChild(pass);
   }
 
@@ -855,7 +874,7 @@ function renderSuitOverlay() {
       img.src = cardImg({ suit, rank: "5" });
 
       img.onclick = () => {
-        ws.send(JSON.stringify({ type: "chooseSuit", suit }));
+        sendMessage({ type: "chooseSuit", suit });
       };
 
       box.appendChild(img);
@@ -942,7 +961,7 @@ function renderEndOverlay() {
 
   if (ready) {
     ready.onclick = () => {
-      ws.send(JSON.stringify({ type: "readyNext" }));
+      sendMessage({ type: "readyNext" });
     };
   }
 
@@ -950,7 +969,7 @@ function renderEndOverlay() {
 
   if (notReady) {
     notReady.onclick = () => {
-      ws.send(JSON.stringify({ type: "notReadyNext" }));
+      sendMessage({ type: "notReadyNext" });
     };
   }
 
@@ -958,7 +977,7 @@ function renderEndOverlay() {
 
   if (reset) {
     reset.onclick = () => {
-      ws.send(JSON.stringify({ type: "resetMatch" }));
+      sendMessage({ type: "resetMatch" });
     };
   }
 }
@@ -1064,10 +1083,22 @@ function renderFinalCardNotice() {
 
 
 function podiumIcon(index) {
-  if (index === 0) return '<img class="podiumIcon" src="assets/medaglia-oro.png" alt="1° posto">';
-  if (index === 1) return '<img class="podiumIcon" src="assets/medaglia-argento.png" alt="2° posto">';
-  if (index === 2) return '<img class="podiumIcon" src="assets/medaglia-bronzo.png" alt="3° posto">';
-  if (index === 3) return '<img class="podiumIcon" src="assets/pistacchio-4.png" alt="4° posto">';
+  if (index === 0) {
+    return '<img class="podiumIcon" src="assets/medaglia-oro.png" alt="1° posto">';
+  }
+
+  if (index === 1) {
+    return '<img class="podiumIcon" src="assets/medaglia-argento.png" alt="2° posto">';
+  }
+
+  if (index === 2) {
+    return '<img class="podiumIcon" src="assets/medaglia-bronzo.png" alt="3° posto">';
+  }
+
+  if (index === 3) {
+    return '<img class="podiumIcon" src="assets/pistacchio-4.png" alt="4° posto">';
+  }
+
   return "";
 }
 
