@@ -161,7 +161,7 @@ function handleSocketMessage(event) {
 
     if (passAccepted) {
       pendingPassConfirmation = false;
-      showSmallToast("✅ Hai passato");
+      showSmallToast("Hai passato");
     } else if (passRejected) {
       pendingPassConfirmation = false;
     }
