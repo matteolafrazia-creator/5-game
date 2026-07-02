@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1010_MOBILE_HOME_SCROLL_FIX_STYLE */
 /* BUILD_CHECK: V1009_TIEBREAK_EXPLANATION_STYLE */
 /* BUILD_CHECK: V1008_MATCH_LENGTH_STYLE */
 /* BUILD_CHECK: V0989_CUSTOM_PODIUM_ICONS_STYLE */
@@ -1596,5 +1597,30 @@ input, button {
 
   .standingRow .standingStat:last-child {
     grid-column: 2;
+  }
+}
+
+
+
+/* v1.0.10 mobile home scroll fix */
+@media (max-width: 640px) {
+  html, body {
+    overflow: auto;
+  }
+
+  #app {
+    min-height: 100dvh;
+    height: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .screen {
+    margin: 18px auto;
+    padding-bottom: 28px;
+  }
+
+  .startScreen {
+    max-width: min(360px, calc(100vw - 20px));
   }
 }
