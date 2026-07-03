@@ -9,6 +9,7 @@
 const http = require("http");
 const express = require("express");
 const WebSocket = require("ws");
+const path = require("path");
 
 const app = express();
 
@@ -21,7 +22,17 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static("public"));
+app.use(express.static("public", {
+  index: false
+}));
+
+app.get(["/", "/index.html"], (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
