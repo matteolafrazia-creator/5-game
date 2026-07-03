@@ -1740,3 +1740,19 @@ input, button {
     margin: 3px !important;
   }
 }
+
+
+/* v1.0.14 mobile table visible before turn */
+@media (max-width:640px){
+  #app{
+    grid-template-rows:auto auto auto minmax(160px,1fr) auto auto !important;
+  }
+
+  .table{
+    min-height:160px !important;
+  }
+
+  .fixedColumnGrid{
+    min-height:150px !important;
+  }
+}
