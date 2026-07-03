@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1015_NO_CACHE_INDEX */
 /* BUILD_CHECK: V1009_TIEBREAK_EXPLANATION_SERVER */
 /* BUILD_CHECK: V1008_MATCH_LENGTH_SERVER */
 /* BUILD_CHECK: V1007_TIEBREAK_WINS_PLACEMENTS_SERVER */
@@ -10,6 +11,16 @@ const express = require("express");
 const WebSocket = require("ws");
 
 const app = express();
+
+app.use((req, res, next) => {
+  if (req.path === "/" || req.path === "/index.html") {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+  }
+  next();
+});
+
 app.use(express.static("public"));
 
 const server = http.createServer(app);
