@@ -1595,11 +1595,26 @@ input, button {
 
 @media (max-width: 420px) {
   .standingRow {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0,1fr) auto auto !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .standingPlayer {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .standingStat {
+    white-space: nowrap !important;
+    display: inline-block !important;
+    font-size: 12px !important;
   }
 
   .standingRow .standingStat:last-child {
-    grid-column: 2;
+    grid-column: auto !important;
   }
 }
 
