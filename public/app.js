@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1019_STABLE_POPUPS_AND_PASS_WARNING_APP */
 /* BUILD_CHECK: V1009_TIEBREAK_EXPLANATION_APP */
 console.log("BUILD_CHECK V1009_TIEBREAK_EXPLANATION loaded");
 /* BUILD_CHECK: V1008_MATCH_LENGTH_APP */
@@ -56,10 +57,87 @@ let ignoringOldRoomCode = null;
 let resumeReloadScheduled = false;
 let lastResumeJoinAt = 0;
 let pendingPassConfirmation = false;
+let dismissedPassWarningMessage = null;
+let lastPassWarningMessage = null;
+let preservedMainOverlay = null;
+let preservedMainOverlayKey = null;
 
 const SUITS = ["CP", "DN", "SP", "BA"];
 const SUIT_LABELS = { CP: "Coppe", DN: "Denari", SP: "Spade", BA: "Bastoni" };
 const VERTICAL_SLOTS = ["R", "C", "F", "7", "6", "5", "4", "3", "2", "A"];
+
+
+function getMainOverlayKey(nextState = state) {
+  if (!nextState) return null;
+
+  if (nextState.gameState === "PICK_SUIT") {
+    return [
+      "PICK_SUIT",
+      nextState.roomCode,
+      nextState.handNumber,
+      nextState.dealerIndex,
+      nextState.yourIndex,
+      nextState.players?.[nextState.dealerIndex]?.name || ""
+    ].join("|");
+  }
+
+  if (nextState.gameState === "HAND_OVER" || nextState.gameState === "GAME_OVER") {
+    const readySignature = (nextState.players || [])
+      .map(p => `${p.id || p.name}:${p.readyNext ? 1 : 0}`)
+      .join(",");
+
+    const standingsSignature = (nextState.standings || [])
+      .map(p => `${p.name}:${p.total}:${p.wins || 0}`)
+      .join(",");
+
+    return [
+      "END",
+      nextState.roomCode,
+      nextState.gameState,
+      nextState.handNumber,
+      nextState.handResult?.winnerName || "",
+      readySignature,
+      standingsSignature
+    ].join("|");
+  }
+
+  if (nextState.gameState === "ABORTED") {
+    return [
+      "ABORTED",
+      nextState.roomCode,
+      nextState.message || ""
+    ].join("|");
+  }
+
+  return null;
+}
+
+function prepareMainOverlayPreservation() {
+  preservedMainOverlay = null;
+  preservedMainOverlayKey = null;
+
+  const nextKey = getMainOverlayKey(state);
+  if (!nextKey) return;
+
+  const existing = document.querySelector(".suitOverlay, .overlay");
+  if (!existing || existing.dataset.overlayKey !== nextKey) return;
+
+  preservedMainOverlay = existing;
+  preservedMainOverlayKey = nextKey;
+  existing.remove();
+}
+
+function restorePreservedMainOverlay() {
+  if (!preservedMainOverlay) return;
+
+  app.appendChild(preservedMainOverlay);
+  preservedMainOverlay = null;
+  preservedMainOverlayKey = null;
+}
+
+function shouldSkipMainOverlayRender(key) {
+  return !!key && !!preservedMainOverlay && preservedMainOverlayKey === key;
+}
 
 function handleSocketOpen() {
   preloadCardImages();
@@ -130,6 +208,20 @@ function handleSocketMessage(event) {
   const previousGameState = state?.gameState;
   state = data;
   joined = true;
+
+  const currentPassWarningMessage =
+    state.message &&
+    (
+      state.message.includes("Non puoi passare") ||
+      state.message.includes("devi giocare il 5")
+    )
+      ? state.message
+      : null;
+
+  if (currentPassWarningMessage !== lastPassWarningMessage) {
+    dismissedPassWarningMessage = null;
+    lastPassWarningMessage = currentPassWarningMessage;
+  }
 
   if (state.gameState === "ABORTED") {
     clearSession();
@@ -437,7 +529,7 @@ function renderStart() {
 
       <button id="rulesBtn" class="rulesBtn">❓ Come si gioca?</button>
 
-      <div class="betaLabel">Beta v1.0.9</div>
+      <div class="betaLabel">Beta v1.0.19</div>
     </div>
   `;
 
@@ -519,6 +611,8 @@ function render() {
   if (!joined) return renderStart();
   if (!state) return;
 
+  prepareMainOverlayPreservation();
+
   const fragment = document.createDocumentFragment();
   renderTarget = fragment;
 
@@ -535,6 +629,7 @@ function render() {
 
   renderTarget = app;
   app.replaceChildren(fragment);
+  restorePreservedMainOverlay();
 
   scheduleThinkingNotice();
 }
@@ -967,8 +1062,12 @@ function renderActions() {
 function renderSuitOverlay() {
   if (state.gameState !== "PICK_SUIT") return;
 
+  const overlayKey = getMainOverlayKey();
+  if (shouldSkipMainOverlayRender(overlayKey)) return;
+
   const overlay = document.createElement("div");
   overlay.className = "suitOverlay";
+  overlay.dataset.overlayKey = overlayKey;
 
   if (state.yourIndex === state.dealerIndex) {
     overlay.innerHTML = `
@@ -1035,6 +1134,9 @@ function renderEndOverlay() {
   if (!["HAND_OVER", "GAME_OVER"].includes(state.gameState) || !state.handResult) return;
   if (replayRunning) return;
 
+  const overlayKey = getMainOverlayKey();
+  if (shouldSkipMainOverlayRender(overlayKey)) return;
+
   if (Date.now() < endOverlayVisibleAt) {
     renderFinalCardNotice();
     return;
@@ -1042,6 +1144,7 @@ function renderEndOverlay() {
 
   const overlay = document.createElement("div");
   overlay.className = "overlay";
+  overlay.dataset.overlayKey = overlayKey;
 
   const scores = state.handResult.scores
     .map(s => `<li>${s.name}: ${s.points} punti</li>`)
@@ -1130,8 +1233,12 @@ function renderEndOverlay() {
 function renderAbortedOverlay() {
   if (state.gameState !== "ABORTED") return;
 
+  const overlayKey = getMainOverlayKey();
+  if (shouldSkipMainOverlayRender(overlayKey)) return;
+
   const overlay = document.createElement("div");
   overlay.className = "overlay";
+  overlay.dataset.overlayKey = overlayKey;
 
   overlay.innerHTML = `
     <div class="modal">
@@ -1162,6 +1269,8 @@ function renderPassWarningOverlay() {
     state.message.includes("devi giocare il 5");
 
   if (!isPassWarning) return;
+  if (dismissedPassWarningMessage === state.message) return;
+  if (document.querySelector(".passWarningOverlay")) return;
 
   const overlay = document.createElement("div");
   overlay.className = "passWarningOverlay";
@@ -1177,6 +1286,7 @@ function renderPassWarningOverlay() {
   renderTarget.appendChild(overlay);
 
   byId("closePassWarningBtn").onclick = () => {
+    dismissedPassWarningMessage = state.message;
     overlay.remove();
   };
 }
