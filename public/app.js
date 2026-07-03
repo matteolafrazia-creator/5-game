@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1020_STOP_SYNC_DURING_OVERLAYS_APP */
 /* BUILD_CHECK: V1019_STABLE_POPUPS_AND_PASS_WARNING_APP */
 /* BUILD_CHECK: V1009_TIEBREAK_EXPLANATION_APP */
 console.log("BUILD_CHECK V1009_TIEBREAK_EXPLANATION loaded");
@@ -364,7 +365,12 @@ function forceResumeReload(reason = "resume") {
 }
 
 function handleAppResume(reason = "resume") {
-  if (state?.gameState === "ABORTED") return;
+  if (
+    state &&
+    ["ABORTED", "HAND_OVER", "GAME_OVER", "PICK_SUIT"].includes(state.gameState)
+  ) {
+    return;
+  }
 
   const { savedId, savedName, savedRoom } = getSavedSession();
 
@@ -529,7 +535,7 @@ function renderStart() {
 
       <button id="rulesBtn" class="rulesBtn">❓ Come si gioca?</button>
 
-      <div class="betaLabel">Beta v1.0.19</div>
+      <div class="betaLabel">Beta v1.0.20</div>
     </div>
   `;
 
