@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1021_FINAL_MODAL_MOBILE_AND_TIEBREAK_APP */
 /* BUILD_CHECK: V1020_STOP_SYNC_DURING_OVERLAYS_APP */
 /* BUILD_CHECK: V1019_STABLE_POPUPS_AND_PASS_WARNING_APP */
 /* BUILD_CHECK: V1009_TIEBREAK_EXPLANATION_APP */
@@ -535,7 +536,7 @@ function renderStart() {
 
       <button id="rulesBtn" class="rulesBtn">❓ Come si gioca?</button>
 
-      <div class="betaLabel">Beta v1.0.20</div>
+      <div class="betaLabel">Beta v1.0.21</div>
     </div>
   `;
 
@@ -1112,12 +1113,19 @@ function renderSuitOverlay() {
 }
 
 
+function isTiebreakPlayer(name) {
+  const players = state.handResult?.tiebreakInfo?.players;
+  return Array.isArray(players) && players.includes(name);
+}
+
 function renderStandingRow(s, index) {
   const wins = s.wins || 0;
+  const tiebreakClass = isTiebreakPlayer(s.name) ? " tiebreakStandingRow" : "";
+  const tiebreakBadge = isTiebreakPlayer(s.name) ? '<small class="tiebreakBadge">spareggio</small>' : "";
 
   return `
-    <li class="standingRow">
-      <span class="standingPlayer">${podiumIcon(index)} ${s.name}</span>
+    <li class="standingRow${tiebreakClass}">
+      <span class="standingPlayer">${podiumIcon(index)} ${s.name} ${tiebreakBadge}</span>
       <span class="standingStat"><strong>${s.total}</strong> pt</span>
       <span class="standingStat"><strong>${wins}</strong> vittorie</span>
     </li>
@@ -1179,16 +1187,22 @@ function renderEndOverlay() {
     : "";
 
   overlay.innerHTML = `
-    <div class="modal victoryModal ${state.gameState === "GAME_OVER" ? "finalVictoryModal" : ""}">
-      <button id="endExitBtn" class="modalExitBtn">Esci</button>
-      <div class="trophy">${state.gameState === "GAME_OVER" ? "🎉" : "🏆"}</div>
-      <h1>${state.gameState === "GAME_OVER" ? "Partita conclusa" : "Ha vinto " + state.handResult.winnerName}</h1>
-      ${state.gameState === "GAME_OVER" ? `<h2 class="championTitle">Campione: ${state.standings[0]?.name || ""}</h2>` : ""}
-      <h3>Punteggi mano</h3>
-      <ul>${scores}</ul>
-      ${standings}
-      ${durationBox}
-      <div class="endButtons">
+    <div class="modal victoryModal endModal ${state.gameState === "GAME_OVER" ? "finalVictoryModal" : ""}">
+      <div class="endModalHeader">
+        <div class="trophy">${state.gameState === "GAME_OVER" ? "🎉" : "🏆"}</div>
+        <button id="endExitBtn" class="modalExitBtn endModalExitBtn">Esci</button>
+        <h1>${state.gameState === "GAME_OVER" ? "Partita conclusa" : "Ha vinto " + state.handResult.winnerName}</h1>
+        ${state.gameState === "GAME_OVER" ? `<h2 class="championTitle">Campione: ${state.standings[0]?.name || ""}</h2>` : ""}
+      </div>
+
+      <div class="endModalBody">
+        <h3>Punteggi mano</h3>
+        <ul>${scores}</ul>
+        ${standings}
+        ${durationBox}
+      </div>
+
+      <div class="endButtons endModalFooter">
         ${replayAvailable ? '<button id="watchReplayBtn" class="secondaryBtn">Rivedi la mano</button>' : ""}
         ${
           state.gameState === "HAND_OVER"

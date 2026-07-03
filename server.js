@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1021_FINAL_MODAL_TIEBREAK_TEXT_SERVER */
 /* BUILD_CHECK: V1015_NO_CACHE_INDEX */
 /* BUILD_CHECK: V1009_TIEBREAK_EXPLANATION_SERVER */
 /* BUILD_CHECK: V1008_MATCH_LENGTH_SERVER */
@@ -163,7 +164,8 @@ function buildTiebreakInfo(finalStandings) {
     return {
       type: "wins",
       title: "Spareggio deciso dalle vittorie",
-      text: `${winner.name} e ${challenger.name} hanno concluso con ${winner.total} punti. Vince ${winner.name} perché ha ottenuto ${winner.wins || 0} vittorie, contro le ${challenger.wins || 0} di ${challenger.name}.`
+      players: [winner.name, challenger.name],
+      text: `${winner.name} e ${challenger.name} hanno concluso con ${winner.total} punti. ${winner.name} si è classificato davanti a ${challenger.name} grazie alle ${winner.wins || 0} vittorie, contro le ${challenger.wins || 0} di ${challenger.name}.`
     };
   }
 
@@ -171,13 +173,15 @@ function buildTiebreakInfo(finalStandings) {
     return {
       type: "placements",
       title: "Spareggio deciso dai piazzamenti",
-      text: `${winner.name} e ${challenger.name} hanno concluso con ${winner.total} punti e ${winner.wins || 0} vittorie. Vince ${winner.name} grazie ai migliori piazzamenti ottenuti durante la partita.`
+      players: [winner.name, challenger.name],
+      text: `${winner.name} e ${challenger.name} hanno concluso con ${winner.total} punti e ${winner.wins || 0} vittorie. ${winner.name} si è classificato davanti a ${challenger.name} grazie ai migliori piazzamenti ottenuti durante la partita.`
     };
   }
 
   return {
     type: "draw",
     title: "Pari merito",
+    players: [winner.name, challenger.name],
     text: `${winner.name} e ${challenger.name} hanno concluso con ${winner.total} punti, lo stesso numero di vittorie e piazzamenti equivalenti.`
   };
 }
@@ -807,5 +811,5 @@ wss.on("connection", (ws) => {
 });
 
 server.listen(process.env.PORT || 10000, () => {
-  console.log("Gioco 5 v1.0.9 tiebreak explanation online");
+  console.log("Gioco 5 v1.0.21 final modal fixes online");
 });

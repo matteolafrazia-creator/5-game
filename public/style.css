@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1021_FINAL_MODAL_MOBILE_AND_TIEBREAK_STYLE */
 /* BUILD_CHECK: V1013_COMPACT_HOME_ONE_SCREEN_STYLE */
 /* BUILD_CHECK: V1012_GAME_SCREEN_NO_SCROLL_STYLE */
 /* BUILD_CHECK: V1010_MOBILE_HOME_SCROLL_FIX_STYLE */
@@ -1754,5 +1755,163 @@ input, button {
 
   .fixedColumnGrid{
     min-height:150px !important;
+  }
+}
+
+
+
+/* v1.0.21 final modal mobile layout + tiebreak highlight */
+.endModal {
+  max-height: 92dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  position: relative;
+}
+
+.endModalHeader {
+  position: relative;
+  padding: 0 42px 4px;
+  flex-shrink: 0;
+}
+
+.endModalHeader h1 {
+  margin: 4px 0 6px;
+}
+
+.endModalExitBtn {
+  top: 0 !important;
+  right: 0 !important;
+}
+
+.endModalBody {
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 2px 8px;
+}
+
+.endModalFooter {
+  flex-shrink: 0;
+  margin-top: 8px;
+  padding-top: 8px;
+  background: #fff;
+  border-top: 1px solid rgba(0,0,0,0.08);
+}
+
+.tiebreakStandingRow {
+  background: rgba(255, 213, 79, 0.18);
+  border-radius: 8px;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+.tiebreakBadge {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 213, 79, 0.28);
+  color: #8a6500;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+@media (max-width: 640px) {
+  .overlay {
+    padding: 8px !important;
+    align-items: center !important;
+  }
+
+  .endModal {
+    width: min(100%, 390px) !important;
+    max-height: 94dvh !important;
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+
+  .endModalHeader {
+    padding: 0 38px 4px !important;
+  }
+
+  .endModalHeader .trophy {
+    font-size: 28px !important;
+  }
+
+  .endModalHeader h1 {
+    font-size: 23px !important;
+    line-height: 1.08 !important;
+    margin: 2px 0 6px !important;
+  }
+
+  .championTitle {
+    font-size: 17px !important;
+    margin: 4px 0 6px !important;
+  }
+
+  .endModalBody h3 {
+    margin: 8px 0 6px !important;
+    font-size: 16px !important;
+  }
+
+  .endModalBody ul {
+    margin: 6px 0 8px !important;
+    padding-left: 18px !important;
+    font-size: 14px !important;
+  }
+
+  .standingsList li {
+    padding: 5px 4px !important;
+  }
+
+  .standingRow {
+    gap: 6px !important;
+  }
+
+  .standingStat {
+    font-size: 12px !important;
+  }
+
+  .tiebreakBox {
+    margin-top: 8px !important;
+    padding: 9px !important;
+  }
+
+  .tiebreakBox h3 {
+    font-size: 16px !important;
+  }
+
+  .tiebreakBox p {
+    font-size: 13px !important;
+  }
+
+  .durationBox {
+    margin: 8px 0 !important;
+    padding: 7px !important;
+    font-size: 13px !important;
+  }
+
+  .endModalFooter {
+    margin-top: 6px !important;
+    padding-top: 6px !important;
+  }
+
+  .endModalFooter button {
+    padding: 8px 10px !important;
+    margin: 3px !important;
+    font-size: 14px !important;
+  }
+
+  .endModalFooter p {
+    margin: 2px 0 5px !important;
+    font-size: 13px !important;
+  }
+
+  .readyList {
+    max-height: 92px;
+    overflow-y: auto;
+    margin: 4px 0 6px !important;
   }
 }
