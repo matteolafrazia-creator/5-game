@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1022_STANDINGS_COLUMNS_APP */
 /* BUILD_CHECK: V1021_FINAL_MODAL_MOBILE_AND_TIEBREAK_APP */
 /* BUILD_CHECK: V1020_STOP_SYNC_DURING_OVERLAYS_APP */
 /* BUILD_CHECK: V1019_STABLE_POPUPS_AND_PASS_WARNING_APP */
@@ -536,7 +537,7 @@ function renderStart() {
 
       <button id="rulesBtn" class="rulesBtn">❓ Come si gioca?</button>
 
-      <div class="betaLabel">Beta v1.0.21</div>
+      <div class="betaLabel">Beta v1.0.22</div>
     </div>
   `;
 
@@ -1127,7 +1128,7 @@ function renderStandingRow(s, index) {
     <li class="standingRow${tiebreakClass}">
       <span class="standingPlayer">${podiumIcon(index)} ${s.name} ${tiebreakBadge}</span>
       <span class="standingStat"><strong>${s.total}</strong> pt</span>
-      <span class="standingStat"><strong>${wins}</strong> vittorie</span>
+      <span class="standingStat"><strong>${wins}</strong> vitt.</span>
     </li>
   `;
 }

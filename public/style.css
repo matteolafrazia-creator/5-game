@@ -1,3 +1,4 @@
+/* BUILD_CHECK: V1022_STANDINGS_COLUMNS_STYLE */
 /* BUILD_CHECK: V1021_FINAL_MODAL_MOBILE_AND_TIEBREAK_STYLE */
 /* BUILD_CHECK: V1013_COMPACT_HOME_ONE_SCREEN_STYLE */
 /* BUILD_CHECK: V1012_GAME_SCREEN_NO_SCROLL_STYLE */
@@ -1928,5 +1929,81 @@ input, button {
     max-height: 92px;
     overflow-y: auto;
     margin: 4px 0 6px !important;
+  }
+}
+
+
+/* v1.0.22 standings columns final fix */
+.standingsWithStats {
+  width: 100% !important;
+}
+
+.standingRow {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 56px 68px !important;
+  align-items: center !important;
+  column-gap: 10px !important;
+}
+
+.standingPlayer {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.standingStat {
+  width: 100% !important;
+  min-width: 0 !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+  display: block !important;
+  font-size: 13px !important;
+  line-height: 1.15 !important;
+}
+
+.standingRow .standingStat:last-child {
+  grid-column: auto !important;
+}
+
+@media (max-width: 640px) {
+  .standingRow {
+    grid-template-columns: minmax(0, 1fr) 44px 54px !important;
+    column-gap: 6px !important;
+  }
+
+  .standingStat {
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+  }
+
+  .standingPlayer {
+    font-size: 14px !important;
+  }
+
+  .standingsList .podiumIcon {
+    width: 22px !important;
+    height: 22px !important;
+    margin-right: 4px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .standingRow {
+    grid-template-columns: minmax(0, 1fr) 40px 50px !important;
+    column-gap: 5px !important;
+  }
+
+  .standingStat {
+    font-size: 11px !important;
+  }
+
+  .standingPlayer {
+    font-size: 13px !important;
+  }
+
+  .standingsList .podiumIcon {
+    width: 20px !important;
+    height: 20px !important;
   }
 }
