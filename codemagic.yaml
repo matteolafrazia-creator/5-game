@@ -1,0 +1,22 @@
+workflows:
+  ios-simulator-build:
+    name: iOS Simulator Build (no signing)
+    max_build_duration: 30
+    environment:
+      node: 20
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+      - name: Sync Capacitor iOS project
+        script: npx cap sync ios
+      - name: Build for iOS Simulator
+        script: |
+          xcodebuild build \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath "$CM_BUILD_DIR/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO
+    artifacts:
+      - "$CM_BUILD_DIR/DerivedData/Build/Products/Debug-iphonesimulator/*.app"
