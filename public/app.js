@@ -41,8 +41,15 @@ function byId(id) {
 let ws = null;
 let reconnectingWebSocket = false;
 
+// When bundled into the native app (Capacitor), the page is loaded from
+// file://-style local assets, so location.origin no longer points at the
+// real game server. In that case connect to the deployed server instead.
+const NATIVE_SERVER_ORIGIN = "https://five-game.onrender.com";
+
 function getWebSocketUrl() {
-  return location.origin.replace("http", "ws");
+  const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const origin = isNative ? NATIVE_SERVER_ORIGIN : location.origin;
+  return origin.replace("http", "ws");
 }
 
 let state = null;

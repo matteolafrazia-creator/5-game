@@ -1,0 +1,18 @@
+# Capacitor native build artifacts
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/captures/
+android/app/release/
+android/app/debug/
+
+ios/App/Pods/
+ios/App/build/
+ios/App/App/public/
+ios/App/DerivedData/
+ios/.xcode.env.local
+**/xcuserdata/
+
+# Capacitor copies public/ into the native projects on sync; no need to track the copy
+android/app/src/main/assets/public/
