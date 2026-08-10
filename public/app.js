@@ -952,11 +952,6 @@ function renderTable() {
     col.className = "suitColumn";
     col.dataset.suit = suit;
 
-    const title = document.createElement("div");
-    title.className = "suitTitle";
-    title.innerText = SUIT_LABELS[suit];
-    col.appendChild(title);
-
     const cardsByRank = getCardsByRank(suit);
     const isComplete = Object.keys(cardsByRank).length === 10;
 
@@ -1196,7 +1191,7 @@ function renderEndOverlay() {
   overlay.innerHTML = `
     <div class="modal victoryModal endModal ${state.gameState === "GAME_OVER" ? "finalVictoryModal" : ""}">
       <div class="endModalHeader">
-        <div class="trophy">${state.gameState === "GAME_OVER" ? "🎉" : "🏆"}</div>
+        <div class="trophy">${state.gameState === "GAME_OVER" ? '<img class="trophyImg" src="assets/badge-vittoria.png" alt="Campione">' : "🏆"}</div>
         <button id="endExitBtn" class="modalExitBtn endModalExitBtn">Esci</button>
         <h1>${state.gameState === "GAME_OVER" ? "Partita conclusa" : "Ha vinto " + state.handResult.winnerName}</h1>
         ${state.gameState === "GAME_OVER" ? `<h2 class="championTitle">Campione: ${state.standings[0]?.name || ""}</h2>` : ""}
@@ -1368,7 +1363,7 @@ function podiumIcon(index) {
   if (index === 0) return '<img class="podiumIcon" src="assets/medaglia-oro.png" alt="1° posto">';
   if (index === 1) return '<img class="podiumIcon" src="assets/medaglia-argento.png" alt="2° posto">';
   if (index === 2) return '<img class="podiumIcon" src="assets/medaglia-bronzo.png" alt="3° posto">';
-  if (index === 3) return '<img class="podiumIcon" src="assets/pistacchio-4.png" alt="4° posto">';
+  if (index === 3) return '<img class="podiumIcon" src="assets/badge-pistacchio-4posto.png" alt="4° posto">';
   return "";
 }
 

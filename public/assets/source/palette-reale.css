@@ -1,0 +1,9 @@
+/* Palette estratta realmente dai pixel del logo "Il Mondo di 5" */
+:root {
+  --verde-scurissimo: #0A160B;   /* sfondo più profondo */
+  --verde-bosco: #0E190E;        /* verde bosco principale */
+  --verde-oliva-scuro: #202918;  /* variante/bordo */
+  --legno-scuro: #4C3C20;        /* legno/marrone scuro */
+  --oro-opaco: #947C52;          /* oro/bronzo opaco (dettagli) */
+  --avorio-caldo: #D2B991;       /* avorio/crema per testo su scuro e sfondi chiari */
+}

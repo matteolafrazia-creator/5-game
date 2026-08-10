@@ -32,7 +32,7 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: #0f5132;
+  background: #0f5132 url("assets/bg-tavolo-legno@1024.jpg") center center / cover no-repeat fixed;
   color: #fff;
   font-family: Arial, sans-serif;
   overflow: hidden;
@@ -203,6 +203,16 @@ input, button {
   box-shadow: 0 0 10px rgba(193, 135, 59, 0.5);
 }
 
+.player.active::before {
+  content: "";
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  background: url("assets/badge-giocatore-attivo.png") center / contain no-repeat;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
 .lastCardBox {
   display: flex;
   align-items: center;
@@ -237,23 +247,19 @@ input, button {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
+  perspective: 800px;
+  width: 82%;
+  margin: 0 auto;
 }
 
 .suitColumn {
   min-height: 0;
-  background: rgba(0,0,0,0.2);
-  border-radius: 10px;
-  padding: 4px;
   text-align: center;
-  overflow: hidden;
+  overflow: visible;
   display: grid;
-  grid-template-rows: auto 1fr;
-}
-
-.suitTitle {
-  font-weight: bold;
-  font-size: 11px;
-  margin-bottom: 2px;
+  grid-template-rows: 1fr;
+  transform: rotateX(14deg);
+  transform-origin: bottom center;
 }
 
 .fixedColumnGrid {
@@ -273,11 +279,6 @@ input, button {
   position: relative;
 }
 
-.fiveSlot {
-  background: rgba(193, 135, 59, 0.12);
-  border-radius: 6px;
-}
-
 .tableCard {
   max-height: 100%;
   width: auto;
@@ -286,22 +287,24 @@ input, button {
   border-radius: 4px;
   position: relative;
   z-index: 2;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.35);
+  transform: perspective(600px) rotateX(14deg);
+  transform-origin: bottom center;
+  box-shadow: 0 6px 8px -3px rgba(0,0,0,0.4);
 }
 
 .tableCardPlayed {
   animation: cardPlayed 0.28s ease-out both;
-  box-shadow: 0 0 14px rgba(193, 135, 59, 0.9), 0 3px 8px rgba(0,0,0,0.45);
+  box-shadow: 0 0 14px rgba(193, 135, 59, 0.9), 0 6px 8px -3px rgba(0,0,0,0.45);
 }
 
 @keyframes cardPlayed {
   from {
     opacity: 0.3;
-    transform: scale(1.18) translateY(-8px);
+    transform: perspective(600px) rotateX(14deg) scale(1.18) translateY(-8px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: perspective(600px) rotateX(14deg) scale(1) translateY(0);
   }
 }
 
@@ -364,7 +367,9 @@ input, button {
 }
 
 .hand {
-  min-height: 76px;
+  min-height: 104px;
+  width: clamp(320px, 41%, 700px);
+  margin: 0 auto;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -454,6 +459,12 @@ input, button {
 .trophy {
   font-size: 44px;
   animation: trophyPop 0.6s ease-out both;
+}
+
+.trophyImg {
+  height: 76px;
+  width: auto;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35));
 }
 
 @keyframes victoryIn {
@@ -691,45 +702,6 @@ input, button {
 .secondaryBtn {
   background: rgba(0,0,0,0.12) !important;
   color: var(--color-legno-scuro) !important;
-}
-
-.finalVictoryModal {
-  position: relative;
-  overflow: hidden;
-}
-
-.finalVictoryModal::before,
-.finalVictoryModal::after {
-  content: "🎊 🎉 ✨";
-  position: absolute;
-  left: 0;
-  right: 0;
-  font-size: 22px;
-  animation: confettiFall 1.4s ease-out both;
-  pointer-events: none;
-}
-
-.finalVictoryModal::before {
-  top: -10px;
-}
-
-.finalVictoryModal::after {
-  bottom: -10px;
-  animation-delay: 0.15s;
-}
-
-@keyframes confettiFall {
-  from {
-    transform: translateY(-18px) scale(0.9);
-    opacity: 0;
-  }
-  40% {
-    opacity: 1;
-  }
-  to {
-    transform: translateY(18px) scale(1);
-    opacity: 0.45;
-  }
 }
 
 .replayOverlay {
@@ -1145,6 +1117,12 @@ input, button {
     padding: 4px 2px;
   }
 
+  .player.active::before {
+    width: 10px;
+    height: 10px;
+    margin-right: 2px;
+  }
+
   .lastCardBox {
     font-size: 10px;
     min-height: 28px;
@@ -1158,16 +1136,12 @@ input, button {
     padding: 3px;
   }
 
-  .suitTitle {
-    font-size: 9px;
-  }
-
   .tableCard {
     max-width: min(10.5vw, 42px);
   }
 
   .hand {
-    min-height: 68px;
+    min-height: 80px;
     gap: 1px;
     padding: 4px;
   }
@@ -1197,6 +1171,10 @@ input, button {
 
   .trophy {
     font-size: 36px;
+  }
+
+  .trophyImg {
+    height: 62px;
   }
 
 
@@ -1376,7 +1354,7 @@ input, button {
 .homeClaim {
   font-size: clamp(20px, 4.8vw, 30px);
   font-weight: 800;
-  color: #f5d889;
+  color: var(--color-verde-tavolo);
   text-align: center;
   margin: 6px 0 16px;
   letter-spacing: 0.2px;
@@ -1899,6 +1877,10 @@ input, button {
 
   .endModalHeader .trophy {
     font-size: 28px !important;
+  }
+
+  .endModalHeader .trophyImg {
+    height: 52px !important;
   }
 
   .endModalHeader h1 {
