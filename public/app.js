@@ -934,12 +934,16 @@ function renderPlayers() {
 }
 
 function renderLastCard() {
-  if (!state.lastCard) return;
-
   const div = document.createElement("div");
   div.className = "lastCardBox";
-  div.dataset.cardKey = `${state.lastCard.suit}_${state.lastCard.rank}_${state.lastCard.playerName}`;
-  div.innerHTML = `<span>Ultima carta:</span> <img src="${cardImg(state.lastCard)}" /> <span>${state.lastCard.playerName}</span>`;
+
+  if (state.lastCard) {
+    div.dataset.cardKey = `${state.lastCard.suit}_${state.lastCard.rank}_${state.lastCard.playerName}`;
+    div.innerHTML = `<span>Ultima carta:</span> <img src="${cardImg(state.lastCard)}" /> <span>${state.lastCard.playerName}</span>`;
+  } else {
+    div.classList.add("lastCardBoxEmpty");
+  }
+
   renderTarget.appendChild(div);
 }
 

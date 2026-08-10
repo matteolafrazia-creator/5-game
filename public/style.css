@@ -231,6 +231,13 @@ input, button {
   border-radius: 3px;
 }
 
+.lastCardBoxEmpty {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  animation: none;
+}
+
 @keyframes lastCardAppear {
   from {
     opacity: 0.4;
